@@ -1,0 +1,17 @@
+syntax = "proto3";
+package masterrpc;
+option go_package = "vgproj/proto/masterrpc";
+
+import "globalrpc/msg_nop.proto";
+import "globalrpc/msg_server_auth.proto";
+import "masterrpc/msg_name_manage.proto";
+
+service Master {
+    rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
+
+    rpc GetServerList(globalrpc.ReqServerList) returns(globalrpc.RspServerList);
+    rpc GrabPlayerName(ReqGrabPlayerName) returns(RspGrabPlayerName);
+    rpc GrabGuildName(ReqGrabGuildName) returns(RspGrabGuildName);
+    rpc ReleasePlayerName(NotifyReleasePlayerName) returns(globalrpc.nop);
+    rpc ReleaseGuildName(NotifyReleaseGuildName) returns(globalrpc.nop);
+}

@@ -1,0 +1,31 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+message S2C_VIP_NOTIFY {
+    int32 vip_lev = 1;
+    int32 vip_exp = 2;
+}
+
+message VIP_GIFT_STATUS {
+    int32 vip_lev = 1;
+    int32 get_reward = 2;
+}
+
+message C2S_VIP_GET_GIFT_STATUS {
+
+}
+
+message S2C_VIP_GET_GIFT_STATUS {
+    int32 code = 1;
+    repeated VIP_GIFT_STATUS status = 2;
+}
+
+message C2S_VIP_COLLECT_GIFT {
+    int32 gift_lev = 1;
+}
+
+message S2C_VIP_COLLECT_GIFT {
+    int32 code = 1;
+    int32 gift_lev = 2;
+}

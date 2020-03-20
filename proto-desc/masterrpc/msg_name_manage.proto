@@ -1,0 +1,27 @@
+syntax = "proto3";
+package masterrpc;
+option go_package = "vgproj/proto/masterrpc";
+
+message ReqGrabPlayerName {
+    string name = 1;
+}
+
+message RspGrabPlayerName {
+    bool suc = 1;
+}
+
+message NotifyReleasePlayerName {
+    string name = 1;
+}
+
+message ReqGrabGuildName {
+    string name = 1;
+}
+
+message RspGrabGuildName {
+    bool suc = 1;
+}
+
+message NotifyReleaseGuildName {
+    string name = 1;
+}

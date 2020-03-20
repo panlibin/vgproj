@@ -1,0 +1,7 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+message S2C_PlayerSettings {
+    int32 lan = 1;
+}

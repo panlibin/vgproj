@@ -1,0 +1,71 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+import "msg/msg_comm.proto";
+
+////////////////////////////// START 循环数据定义 START /////////////////////////
+message MAIL_ATTACHMENT {
+    int32 id = 1;
+    int64 num = 2;
+    repeated int64 extra = 3;
+}
+
+// 邮件信息
+message MAIL_INFO{
+    int64 mail_id=1; // 邮件对象Id
+    int32 first_type=2; // 大类
+    int32 second_type=3; // 小类
+    string mail_title=4; // 标题
+    repeated CHARACTERS_PARAM title_params=5; // 标题多语言参数
+    string mail_desc=6; // 内容
+    repeated CHARACTERS_PARAM desc_params=7; // 内容多语言参数
+    int64 ts=8; // 时间
+    repeated MAIL_ATTACHMENT items=9; // 附件物品
+    bool is_new = 10; // 是否新邮件
+    bool is_item_got = 11;      // 是否领取附件
+    bool is_readed = 12;        // 是否已读
+}
+////////////////////////////// END 循环数据定义 END //////////////////////////////
+
+
+////////////////////////////// START 主动下发协议 START //////////////////////////
+// 同步邮件
+message S2C_SYNC_MAILS{
+     repeated MAIL_INFO mails=1;
+}
+////////////////////////////// END 主动下发协议 END //////////////////////////////
+
+// 邮件
+message C2S_MAIL {
+    string lan = 1;
+}
+message S2C_MAIL {
+    repeated MAIL_INFO mails=1; // 邮件列表
+}
+
+// 删除邮件
+message C2S_MAIL_DEL {
+    repeated int64 ids=1; // 邮件对象Id
+}
+message S2C_MAIL_DEL {
+}
+
+// 领取邮件附件
+message C2S_MAIL_ATTACHMENTS {
+    repeated int64 ids=1; // 邮件对象Id
+}
+message S2C_MAIL_ATTACHMENTS {
+}
+
+// 已读邮件
+message C2S_MAIL_READ_REQ {
+    repeated int64 ids = 1;     // 邮件id
+}
+
+message S2C_MAIL_READ_RET {
+    repeated int64 ids = 1;     // 邮件id
+}
+
+
+

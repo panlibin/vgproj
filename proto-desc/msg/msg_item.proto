@@ -1,0 +1,62 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+import "msg/msg_comm.proto";
+
+////////////////////////////// START 循环数据定义 START //////////////////////////////
+// 角色物品
+message ROLE_ITEM{
+    int32 item_id=1; // 物品Id
+    int32 first_type=2; // 大类
+    int32 second_type=3; // 小类
+    int32 quality=4; // 品质
+    int64 num=5; // 数量
+    int32 lucky=6; // 辛运值
+}
+////////////////////////////// END 循环数据定义 END //////////////////////////////
+
+
+
+////////////////////////////// START 主动下发协议 START //////////////////////////
+// 同步物品(增加、修改)
+message S2C_SYNC_ITEMS{
+     repeated ROLE_ITEM items = 1;
+}
+// 同步物品(删除)
+message S2C_SYNC_ITEMS_DEL{
+     repeated int32 del_ids = 1;
+}
+////////////////////////////// END 主动下发协议 END //////////////////////////////
+
+
+
+// 角色物品
+message C2S_ROLE_ITEMS{
+}
+message S2C_ROLE_ITEMS{
+    repeated ROLE_ITEM items=1; // 背包道具物品
+}
+
+
+// 道具使用
+message C2S_USE_PROP{
+    int32 item_id=1; // 物品配置Id
+    int32 item_num=2; // 使用的数量
+    int32 ext1=3; // 扩展1
+}
+
+message S2C_USE_PROP {
+    repeated int64 result = 1;
+}
+
+
+// 礼包码使用
+message C2S_USE_CGP{
+    int32 package_type=1; // 包类型
+    string cgp=2; // 礼包码
+}
+message S2C_USE_CGP{
+    int32 code = 1;
+    repeated ITEM_NUM items = 2;
+}

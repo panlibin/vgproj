@@ -1,0 +1,36 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+// 角色信息
+message C2S_ROLE_INFO {
+}
+
+message S2C_ROLE_INFO {
+    int64 uid=1; // 账号Id
+    int64 rid=2; // 角色Id
+    string name=3; // 名称
+    int32 serv_id=4; // 服务器Id
+    int32 head=5; // 头像
+    int32 head_frame=6; // 头像框
+    int32 lv=7; // 等级
+    int32 vip_lv=8; // Vip等级
+    int32 vip_exp=9; // Vip经验
+    int32 ce=10; // 战斗力
+    int32 member_id=11; // 成员Id
+    int32 title_id=12; // 称号Id
+    int32 guild_id=13; // 公会Id
+    string guild_name=14;       // 公会名称
+    int32 current_ranking=15;   //对决场排名
+    int64 created_ts=16;        // 创建时间戳
+    int64 exp = 17;             // 角色经验
+    map<int32, int64> res = 18; // 资源
+    int32 recharge_amount = 19;
+}
+
+message C2S_ROLE_LVUP_REQ {
+}
+
+message S2C_ROLE_LVUP_RET {
+    int32 lv = 1;           // 升级后等级
+}

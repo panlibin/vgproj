@@ -1,0 +1,36 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+message C2S_Login {
+    int64 account_id = 1;
+    string token = 2;
+    int32 server_id = 3;
+}
+
+message S2C_Login {
+    int32 code = 1;
+    int64 player_id = 2;
+    int64 server_time = 3;
+    int32 offset = 4;
+    int64 open_server_time = 5;
+}
+
+message C2S_CreateCharacter {
+    string name = 1;
+    int32 head = 2;
+    int32 sex = 3;
+}
+
+message S2C_CreateCharacter {
+    int32 code = 1;
+    int64 player_id = 2;
+}
+
+message S2C_Disconnect {
+    int32 code = 1;
+}
+
+message S2C_LoginFinish {
+    
+}

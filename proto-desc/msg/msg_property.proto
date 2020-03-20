@@ -1,0 +1,4 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+

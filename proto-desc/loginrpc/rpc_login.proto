@@ -1,0 +1,13 @@
+syntax = "proto3";
+package loginrpc;
+option go_package = "vgproj/proto/loginrpc";
+
+import "globalrpc/msg_nop.proto";
+import "globalrpc/msg_server_auth.proto";
+import "loginrpc/msg_login.proto";
+
+service Login {
+    rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
+
+    rpc PlayerLogout(NotifyLogout) returns(globalrpc.nop);
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+package msg;
+option go_package = "vg_proj/proto/msg";
+
+import "msg/msg_comm.proto";
+
+// 错误通知
+message S2C_ERROR {
+	int32 code = 1;
+}
+
+// 同步各种类型数量
+message S2C_SYNC_NUM{
+    repeated NUM nums = 1;
+}

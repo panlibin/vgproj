@@ -1,0 +1,22 @@
+syntax = "proto3";
+package globalrpc;
+option go_package = "vgproj/proto/globalrpc";
+
+message ServerInfo {
+    int32 server_type = 1;
+    repeated int32 server_id = 2;
+    string ip = 3;
+}
+
+message NotifyServerAuth {
+    ServerInfo info = 1;
+    string token = 2;
+}
+
+message ReqServerList {
+
+}
+
+message RspServerList {
+    repeated ServerInfo list = 1;
+}

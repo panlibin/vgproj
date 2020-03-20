@@ -1,0 +1,7 @@
+syntax = "proto3";
+package globalrpc;
+option go_package = "vgproj/proto/globalrpc";
+
+message nop {
+
+}
