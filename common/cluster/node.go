@@ -11,6 +11,8 @@ import (
 // INode 节点接口
 type INode interface {
 	GetServerInfo() (serverType int32, serverID []int32, ip string)
+	isDuplicate(serverID []int32, ip string) bool
+	close()
 }
 
 // Node 节点基类
@@ -23,6 +25,7 @@ type Node struct {
 	pCluster      *Cluster
 	authKey       string
 	cc            *grpc.ClientConn
+	quit          bool
 }
 
 // NewNode 创建节点
@@ -39,7 +42,7 @@ func NewNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, a
 	return pObj
 }
 
-// Connect 连接节点
+// connect 连接节点
 func (n *Node) connect() {
 	var err error
 	for {
@@ -56,4 +59,25 @@ func (n *Node) connect() {
 // GetServerInfo 获取服务器类型,ID,IP
 func (n *Node) GetServerInfo() (int32, []int32, string) {
 	return n.serverType, n.arrServerID, n.ip
+}
+
+func (n *Node) isDuplicate(serverID []int32, ip string) bool {
+	if len(n.arrServerID) != len(serverID) {
+		return false
+	}
+	if n.ip != ip {
+		return false
+	}
+
+	for i := 0; i < len(serverID); i++ {
+		if n.arrServerID[i] != serverID[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (n *Node) close() {
+	n.quit = true
+	n.cc.Close()
 }

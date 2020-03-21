@@ -3,6 +3,8 @@ package game
 import (
 	"database/sql"
 	"vgproj/vgmaster/public"
+
+	logger "github.com/panlibin/vglog"
 )
 
 type NameManager struct {
@@ -17,11 +19,11 @@ func NewNameManager() *NameManager {
 	return pObj
 }
 
-func (this *NameManager) Init() error {
+func (nm *NameManager) Init() error {
 	var err error
 	for {
 		var rows *sql.Rows
-		rows, err = public.Server.GetDataDb().Query(this.getDbIdx(), "select `name` from global_player_name")
+		rows, err = public.Server.GetDataDb().Query(nm.getDbIdx(), "select `name` from global_player_name")
 		if err != nil {
 			break
 		}
@@ -32,14 +34,14 @@ func (this *NameManager) Init() error {
 				rows.Close()
 				break
 			}
-			this.mapPlayerName[tmpName] = struct{}{}
+			nm.mapPlayerName[tmpName] = struct{}{}
 		}
 		rows.Close()
 		if err != nil {
 			break
 		}
 
-		rows, err = public.Server.GetDataDb().Query(this.getDbIdx(), "select `name` from global_guild_name")
+		rows, err = public.Server.GetDataDb().Query(nm.getDbIdx(), "select `name` from global_guild_name")
 		if err != nil {
 			break
 		}
@@ -49,7 +51,7 @@ func (this *NameManager) Init() error {
 				rows.Close()
 				break
 			}
-			this.mapGuildName[tmpName] = struct{}{}
+			nm.mapGuildName[tmpName] = struct{}{}
 		}
 		rows.Close()
 		if err != nil {
@@ -65,56 +67,56 @@ func (this *NameManager) Init() error {
 	return err
 }
 
-func (this *NameManager) Release() {
+func (nm *NameManager) Release() {
 
 }
 
-func (this *NameManager) GrabPlayerName(name string) bool {
-	_, exist := this.mapPlayerName[name]
+func (nm *NameManager) GrabPlayerName(name string) bool {
+	_, exist := nm.mapPlayerName[name]
 	if exist {
 		return false
 	}
-	this.mapPlayerName[name] = struct{}{}
-	this.insertPlayerName(name)
+	nm.mapPlayerName[name] = struct{}{}
+	nm.insertPlayerName(name)
 	return true
 }
 
-func (this *NameManager) ReleasePlayerName(name string) {
-	delete(this.mapPlayerName, name)
-	this.deletePlayerName(name)
+func (nm *NameManager) ReleasePlayerName(name string) {
+	delete(nm.mapPlayerName, name)
+	nm.deletePlayerName(name)
 }
 
-func (this *NameManager) GrabGuildName(name string) bool {
-	_, exist := this.mapGuildName[name]
+func (nm *NameManager) GrabGuildName(name string) bool {
+	_, exist := nm.mapGuildName[name]
 	if exist {
 		return false
 	}
-	this.mapGuildName[name] = struct{}{}
-	this.insertGuildName(name)
+	nm.mapGuildName[name] = struct{}{}
+	nm.insertGuildName(name)
 	return true
 }
 
-func (this *NameManager) ReleaseGuildName(name string) {
-	delete(this.mapGuildName, name)
-	this.deleteGuildName(name)
+func (nm *NameManager) ReleaseGuildName(name string) {
+	delete(nm.mapGuildName, name)
+	nm.deleteGuildName(name)
 }
 
-func (this *NameManager) insertPlayerName(name string) {
-	public.Server.GetDataDb().AsyncExec(this.getDbIdx(), "insert into global_player_name values(?)", name)
+func (nm *NameManager) insertPlayerName(name string) {
+	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "insert into global_player_name values(?)", name)
 }
 
-func (this *NameManager) deletePlayerName(name string) {
-	public.Server.GetDataDb().AsyncExec(this.getDbIdx(), "delete from global_player_name where `name`=?", name)
+func (nm *NameManager) deletePlayerName(name string) {
+	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "delete from global_player_name where `name`=?", name)
 }
 
-func (this *NameManager) insertGuildName(name string) {
-	public.Server.GetDataDb().AsyncExec(this.getDbIdx(), "insert into global_guild_name values(?)", name)
+func (nm *NameManager) insertGuildName(name string) {
+	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "insert into global_guild_name values(?)", name)
 }
 
-func (this *NameManager) deleteGuildName(name string) {
-	public.Server.GetDataDb().AsyncExec(this.getDbIdx(), "delete from global_guild_name where `name`=?", name)
+func (nm *NameManager) deleteGuildName(name string) {
+	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "delete from global_guild_name where `name`=?", name)
 }
 
-func (this *NameManager) getDbIdx() uint32 {
+func (nm *NameManager) getDbIdx() uint32 {
 	return 1
 }

@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"net"
+	"sync"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo"
@@ -24,6 +25,7 @@ type Cluster struct {
 	ip          string
 	authKey     string
 	rpcServer   *grpc.Server
+	rwMtx       sync.RWMutex
 }
 
 // NewCluster 创建
@@ -72,4 +74,68 @@ func (c *Cluster) Stop() {
 	c.rpcServer.Stop()
 	c.ln.Close()
 	logger.Infof("stop cluster finish")
+}
+
+func (c *Cluster) GrabAllNode() map[int32]map[int32]INode {
+	c.rwMtx.RLock()
+	return c.mapNode
+}
+
+func (c *Cluster) ReleaseAllNode() {
+	c.rwMtx.RUnlock()
+}
+
+func (c *Cluster) GetNode(serverType int32, serverId int32) INode {
+	c.rwMtx.RLock()
+	defer c.rwMtx.RUnlock()
+	mapType, exist := c.mapNode[serverType]
+	if !exist || mapType == nil {
+		return nil
+	}
+	pNode := mapType[serverId]
+	return pNode
+}
+
+func (c *Cluster) AddNode(serverType int32, arrServerId []int32, ip string) {
+	c.rwMtx.Lock()
+	defer c.rwMtx.Unlock()
+
+	mapType, exist := c.mapNode[serverType]
+	if !exist || mapType == nil {
+		mapType = make(map[int32]INode)
+		c.mapNode[serverType] = mapType
+	}
+
+	majorServerId := arrServerId[0]
+	pNode, exist := mapType[majorServerId]
+
+	if exist && pNode != nil {
+		if pNode.isDuplicate(arrServerId, ip) {
+			return
+		}
+	}
+
+	switch serverType {
+	case NodeGame:
+		pNode = NewGameNode(c, serverType, arrServerId, ip, c.authKey)
+	case NodeMaster:
+		pNode = NewMasterNode(c, serverType, arrServerId, ip, c.authKey)
+	case NodeLogin:
+		pNode = NewLoginNode(c, serverType, arrServerId, ip, c.authKey)
+	}
+
+	for _, serverId := range arrServerId {
+		pOldNode, exist := mapType[serverId]
+		if !exist {
+			mapType[serverId] = pNode
+		} else {
+			_, oldServerIds, _ := pOldNode.GetServerInfo()
+			for _, oldId := range oldServerIds {
+				delete(mapType, oldId)
+			}
+			pOldNode.close()
+		}
+	}
+
+	return
 }

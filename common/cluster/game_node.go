@@ -3,22 +3,20 @@ package cluster
 import (
 	"context"
 	"time"
+	"vgproj/proto/gamerpc"
 	"vgproj/proto/globalrpc"
-	"vgproj/proto/loginrpc"
 )
 
-// LoginNode 登录服节点
-type LoginNode struct {
+type GameNode struct {
 	*Node
-	loginrpc.LoginClient
+	gamerpc.GameClient
 }
 
-// NewLoginNode 创建登陆节点
-func NewLoginNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, authKey string) *LoginNode {
-	pObj := &LoginNode{
+func NewGameNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, authKey string) *GameNode {
+	pObj := &GameNode{
 		Node: NewNode(pCluster, serverType, serverID, ip, authKey),
 	}
-	pObj.LoginClient = loginrpc.NewLoginClient(pObj.cc)
+	pObj.GameClient = gamerpc.NewGameClient(pObj.cc)
 
 	reqAuth := &globalrpc.NotifyServerAuth{
 		Info: &globalrpc.ServerInfo{

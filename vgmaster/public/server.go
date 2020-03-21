@@ -14,7 +14,6 @@ type IServer interface {
 	GetDataDb() *database.Mysql
 	GetCluster() *cluster.Cluster
 	GetNameManager() igame.INameManager
-	GetGameServerManager() igame.IGameServerManager
 	IsDebug() bool
 }
 

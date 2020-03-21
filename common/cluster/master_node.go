@@ -4,21 +4,19 @@ import (
 	"context"
 	"time"
 	"vgproj/proto/globalrpc"
-	"vgproj/proto/loginrpc"
+	"vgproj/proto/masterrpc"
 )
 
-// LoginNode 登录服节点
-type LoginNode struct {
+type MasterNode struct {
 	*Node
-	loginrpc.LoginClient
+	masterrpc.MasterClient
 }
 
-// NewLoginNode 创建登陆节点
-func NewLoginNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, authKey string) *LoginNode {
-	pObj := &LoginNode{
+func NewMasterNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, authKey string) *MasterNode {
+	pObj := &MasterNode{
 		Node: NewNode(pCluster, serverType, serverID, ip, authKey),
 	}
-	pObj.LoginClient = loginrpc.NewLoginClient(pObj.cc)
+	pObj.MasterClient = masterrpc.NewMasterClient(pObj.cc)
 
 	reqAuth := &globalrpc.NotifyServerAuth{
 		Info: &globalrpc.ServerInfo{

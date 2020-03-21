@@ -129,6 +129,7 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 		if err = s.pCluster.Start(); err != nil {
 			break
 		}
+		s.pCluster.AddNode(cluster.NodeMaster, []int32{1}, s.envConf.MasterAddr)
 
 		s.pHTTPServer = http.NewHTTPServer()
 		if err = s.pHTTPServer.Start(s.envConf.ListenAddr, "conf/server.crt", "conf/server.key"); err != nil {
@@ -164,6 +165,10 @@ func (s *Server) GetAccountManager() iaccount.IAccountManager {
 	return s.pAccountManager
 }
 
+func (s *Server) GetCluster() *cluster.Cluster {
+	return s.pCluster
+}
+
 // GetDataDb 获取数据服务器
 func (s *Server) GetDataDb() *database.Mysql {
 	return s.pDataDb
@@ -171,6 +176,10 @@ func (s *Server) GetDataDb() *database.Mysql {
 
 func (s *Server) GetClientKey() string {
 	return s.envConf.ClientKey
+}
+
+func (s *Server) GetAuthKey() string {
+	return s.envConf.AuthKey
 }
 
 // IsDebug 是否调试状态

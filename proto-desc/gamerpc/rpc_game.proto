@@ -1,0 +1,10 @@
+syntax = "proto3";
+package gamerpc;
+option go_package = "vgproj/proto/gamerpc";
+
+import "globalrpc/msg_nop.proto";
+import "globalrpc/msg_server_auth.proto";
+
+service Game {
+    rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
+}

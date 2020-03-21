@@ -44,8 +44,8 @@ CREATE TABLE  `c_master_server`(
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
-insert into c_login_server values(1,':8000','127.0.0.1:8001','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_login_data?charset=utf8mb4&parseTime=True&loc=Local',10,'vgcli','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',0,1);
+insert into c_login_server values(1,':8000','127.0.0.1:8001','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_login_data?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'vgcli','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',0,1);
 
-insert into c_master_server values(1,':8100','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_master_data?charset=utf8mb4&parseTime=True&loc=Local',10,'MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',1);
+insert into c_master_server values(1,':8100','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_master_data?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',1);
 
-insert into c_game_server values(1,':9010','127.0.0.1:9011','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_game_data_1?charset=utf8mb4&parseTime=True&loc=Local',10,'root:root@tcp(127.0.0.1:3306)/vg_game_oa_1?charset=utf8mb4&parseTime=True&loc=Local',10,'root:root@tcp(127.0.0.1:3306)/vg_game_config?charset=utf8mb4&parseTime=True&loc=Local','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',1);
+insert into c_game_server values(1,':9010','127.0.0.1:9011','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_game_data_1?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'root:root@tcp(127.0.0.1:3306)/vg_game_oa_1?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'root:root@tcp(127.0.0.1:3306)/vg_game_config?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',1);
