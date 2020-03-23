@@ -7,6 +7,7 @@ import (
 	clusthdl "vgproj/vgmaster/private/cluster"
 	"vgproj/vgmaster/private/game"
 	"vgproj/vgmaster/public"
+	icluster "vgproj/vgmaster/public/cluster"
 	igame "vgproj/vgmaster/public/game"
 
 	logger "github.com/panlibin/vglog"
@@ -99,6 +100,7 @@ func (s *Server) initEnv() bool {
 }
 
 func (s *Server) OnInit(p *virgo.Procedure) {
+	s.Procedure = p
 	logger.Infof("server init")
 	if !s.initEnv() {
 		return
@@ -122,6 +124,13 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 		s.pCluster.SetHandler(&clusthdl.Server{})
 		if err = s.pCluster.Start(); err != nil {
 			break
+		}
+
+		allNode := s.pNodeManager.GetAllNode()
+		for _, mapTypeNode := range allNode {
+			for _, nodeInfo := range mapTypeNode {
+				s.pCluster.AddNode(nodeInfo.ServerType, nodeInfo.ServerId, nodeInfo.Ip)
+			}
 		}
 
 		break
@@ -158,6 +167,10 @@ func (s *Server) GetDataDb() *database.Mysql {
 
 func (s *Server) GetCluster() *cluster.Cluster {
 	return s.pCluster
+}
+
+func (s *Server) GetNodeManager() icluster.INodeManager {
+	return s.pNodeManager
 }
 
 func (s *Server) GetNameManager() igame.INameManager {

@@ -9,6 +9,7 @@ func NewHTTPServer() *nethelper.HTTPServer {
 	pServer := nethelper.NewHTTPServer()
 	pServer.Handle("/register", handleRegister)
 	pServer.Handle("/login", handleLogin)
+	pServer.Handle("/server_list", handleServerList)
 
 	return pServer
 }

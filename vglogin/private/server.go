@@ -6,15 +6,15 @@ import (
 	"vgproj/common/cluster"
 	"vgproj/vglogin/private/account"
 	clusthdl "vgproj/vglogin/private/cluster"
+	"vgproj/vglogin/private/game"
 	"vgproj/vglogin/private/http"
 	"vgproj/vglogin/public"
 	iaccount "vgproj/vglogin/public/account"
+	igame "vgproj/vglogin/public/game"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo"
 	"github.com/panlibin/virgo/database"
-
-	// "github.com/panlibin/virgo/util/nethelper"
 	"github.com/panlibin/virgo/util/nethelper"
 	"github.com/panlibin/virgo/util/vgdir"
 )
@@ -44,9 +44,10 @@ type Server struct {
 
 	pDataDb *database.Mysql
 
-	pHTTPServer     *nethelper.HTTPServer
-	pAccountManager *account.AccountManager
-	pCluster        *cluster.Cluster
+	pHTTPServer        *nethelper.HTTPServer
+	pAccountManager    *account.AccountManager
+	pGameServerManager *game.GameServerManager
+	pCluster           *cluster.Cluster
 }
 
 // NewServer 创建服务器
@@ -124,6 +125,11 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 			break
 		}
 
+		s.pGameServerManager = game.NewGameServerManager()
+		if err = s.pGameServerManager.Init(); err != nil {
+			break
+		}
+
 		s.pCluster = cluster.NewCluster(s, cluster.NodeLogin, []int32{s.envConf.ServerID}, s.envConf.ClusterAddr, s.envConf.AuthKey)
 		s.pCluster.SetHandler(&clusthdl.Server{})
 		if err = s.pCluster.Start(); err != nil {
@@ -163,6 +169,10 @@ func (s *Server) OnRelease() {
 
 func (s *Server) GetAccountManager() iaccount.IAccountManager {
 	return s.pAccountManager
+}
+
+func (s *Server) GetGameServerManager() igame.IGameServerManager {
+	return s.pGameServerManager
 }
 
 func (s *Server) GetCluster() *cluster.Cluster {

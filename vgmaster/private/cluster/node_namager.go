@@ -2,25 +2,27 @@ package cluster
 
 import (
 	"database/sql"
+	"sync"
 	"vgproj/vgmaster/public"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo/util/vgstr"
 )
 
-type nodeInfo struct {
-	serverType int32
-	serverId   []int32
-	ip         string
+type NodeInfo struct {
+	ServerType int32
+	ServerId   []int32
+	Ip         string
 }
 
 type NodeManager struct {
-	mapNode map[string]*nodeInfo
+	mapNode map[int32]map[int32]*NodeInfo
+	mtx     sync.Mutex
 }
 
 func NewNodeManager() *NodeManager {
 	return &NodeManager{
-		mapNode: make(map[string]*nodeInfo, 32),
+		mapNode: make(map[int32]map[int32]*NodeInfo),
 	}
 }
 
@@ -34,17 +36,31 @@ func (nm *NodeManager) Init() error {
 		}
 		var tmpServerId string
 		for rows.Next() {
-			nInfo := &nodeInfo{}
-			err = rows.Scan(&nInfo.serverType, tmpServerId, &nInfo.ip)
+			nInfo := &NodeInfo{}
+			err = rows.Scan(&nInfo.ServerType, &tmpServerId, &nInfo.Ip)
 			if err != nil {
 				break
 			}
-			nInfo.serverId, err = vgstr.SplitToInt32Array(tmpServerId, ",")
+			nInfo.ServerId, err = vgstr.SplitToInt32Array(tmpServerId, ",")
 			if err != nil {
 				break
 			}
 
-			nm.mapNode[nInfo.ip] = nInfo
+			mapType, exist := nm.mapNode[nInfo.ServerType]
+			if !exist {
+				mapType = make(map[int32]*NodeInfo)
+				nm.mapNode[nInfo.ServerType] = mapType
+			}
+			for _, sId := range nInfo.ServerId {
+				oldNode, exist := mapType[sId]
+				if exist {
+					nm.delete(oldNode.Ip)
+					for _, oldSId := range oldNode.ServerId {
+						delete(mapType, oldSId)
+					}
+				}
+				mapType[sId] = nInfo
+			}
 		}
 		rows.Close()
 		if err != nil {
@@ -59,34 +75,76 @@ func (nm *NodeManager) Init() error {
 	return err
 }
 
-func (nm *NodeManager) addNode(serverType int32, serverId []int32, ip string) {
-	oldNode, exist := nm.mapNode[ip]
-	if exist && oldNode != nil {
-		nm.removeNode(ip)
+func (nm *NodeManager) AddNode(serverType int32, serverId []int32, ip string) {
+	nm.mtx.Lock()
+	defer nm.mtx.Unlock()
+
+	mapType, exist := nm.mapNode[serverType]
+	if !exist {
+		mapType = make(map[int32]*NodeInfo)
+		nm.mapNode[serverType] = mapType
+	}
+	oldNode, exist := mapType[serverId[0]]
+	if exist {
+		if len(oldNode.ServerId) == len(serverId) && oldNode.Ip == ip {
+			dup := true
+			for i, sid := range serverId {
+				if sid != oldNode.ServerId[i] {
+					dup = false
+					break
+				}
+			}
+			if dup {
+				return
+			}
+		}
 	}
 
-	node := &nodeInfo{
-		serverType: serverType,
-		serverId:   serverId,
-		ip:         ip,
+	node := &NodeInfo{
+		ServerType: serverType,
+		ServerId:   serverId,
+		Ip:         ip,
 	}
-	nm.mapNode[ip] = node
+
+	for _, sId := range serverId {
+		oldNode, exist := mapType[sId]
+		if exist {
+			nm.delete(oldNode.Ip)
+			for _, oldSId := range oldNode.ServerId {
+				delete(mapType, oldSId)
+			}
+		}
+		mapType[sId] = node
+	}
+
 	nm.insert(node)
 }
 
-func (nm *NodeManager) removeNode(ip string) {
-	node, exist := nm.mapNode[ip]
-	if exist {
-		delete(nm.mapNode, ip)
-		if node != nil {
-			nm.delete(ip)
-		}
+func (nm *NodeManager) RemoveNode(serverType int32, serverId []int32) {
+	nm.mtx.Lock()
+	defer nm.mtx.Unlock()
+
+	mapType, exist := nm.mapNode[serverType]
+	if !exist {
+		return
+	}
+	node, exist := mapType[serverId[0]]
+	if !exist {
+		return
+	}
+	nm.delete(node.Ip)
+	for _, sId := range node.ServerId {
+		delete(mapType, sId)
 	}
 }
 
-func (nm *NodeManager) insert(node *nodeInfo) {
-	tmpServerId := vgstr.FormatInt32ArrayToString(node.serverId, ",")
-	public.Server.GetDataDb().AsyncExec(nil, 0, "insert into node_list values(?,?,?)", node.serverType, tmpServerId, node.ip)
+func (nm *NodeManager) GetAllNode() map[int32]map[int32]*NodeInfo {
+	return nm.mapNode
+}
+
+func (nm *NodeManager) insert(node *NodeInfo) {
+	tmpServerId := vgstr.FormatInt32ArrayToString(node.ServerId, ",")
+	public.Server.GetDataDb().AsyncExec(nil, 0, "insert into node_list values(?,?,?)", node.ServerType, tmpServerId, node.Ip)
 }
 
 func (nm *NodeManager) delete(ip string) {

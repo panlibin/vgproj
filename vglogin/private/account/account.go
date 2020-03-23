@@ -2,6 +2,7 @@ package account
 
 import (
 	"database/sql"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -102,10 +103,59 @@ func (a *Account) Ban(banType int32, banDuration int64) {
 	a.tokenExpireTs = 0
 }
 
+func (this *Account) GetRnd() uint64 {
+	return this.rnd
+}
+
+func (this *Account) GenRnd() {
+	this.rnd = rand.Uint64()
+}
+
+func (this *Account) GetOnlineServer() int32 {
+	return this.onlineServer
+}
+
+func (this *Account) Login(serverId int32) {
+	this.onlineServer = serverId
+	this.updateOnlineServer()
+}
+
+func (this *Account) Logout(rnd uint64) {
+	if this.rnd != rnd {
+		return
+	}
+	this.onlineServer = -1
+	this.updateOnlineServer()
+}
+
+func (a *Account) SetCharacter(playerId int64, serverId int32, name string, combat int64) {
+	iCharacter, exist := a.mapCharacter[serverId]
+	if !exist {
+		pCharacter := new(Character)
+		pCharacter.id = playerId
+		pCharacter.accountId = a.id
+		pCharacter.serverId = serverId
+		pCharacter.name = name
+		pCharacter.combat = combat
+		pCharacter.updateTs = vgtime.Now()
+		a.mapCharacter[serverId] = pCharacter
+		pCharacter.insert()
+	} else {
+		pCharacter := iCharacter.(*Character)
+		pCharacter.setName(name)
+		pCharacter.setCombat(combat)
+		pCharacter.updateTs = vgtime.Now()
+		pCharacter.update()
+	}
+}
+
+func (a *Account) GetCharacters() map[int32]iaccount.ICharacter {
+	return a.mapCharacter
+}
+
 func (a *Account) loadData() error {
-	rows, err := public.Server.GetDataDb().Query(uint32(a.id), "select `password`,create_time,is_ban,ban_ts,ban_type,ban_duration,online_server from account_info where account_id=?;"+
-		"select login_type,account_name,create_time from account_name where account_id=?;select player_id,server_id,name,combat from character_info where account_id=?",
-		a.id, a.id, a.id)
+	rows, err := public.Server.GetDataDb().Query(uint32(a.id), fmt.Sprintf("select `password`,create_time,is_ban,ban_ts,ban_type,ban_duration,online_server from account_info where account_id=%d;"+
+		"select login_type,account_name,create_time from account_name where account_id=%d;select player_id,server_id,name,combat from character_info where account_id=%d", a.id, a.id, a.id))
 
 	if err != nil {
 		logger.Error(err)
@@ -181,8 +231,8 @@ func (a *Account) loadData() error {
 }
 
 func (a *Account) insert() error {
-	_, err := public.Server.GetDataDb().Exec(uint32(a.id), "insert into account_info(account_id,`password`,create_time) values(?,?,?)",
-		a.id, a.password, a.createTime)
+	_, err := public.Server.GetDataDb().Exec(uint32(a.id), "insert into account_info(account_id,`password`,create_time,online_server) values(?,?,?,?)",
+		a.id, a.password, a.createTime, a.onlineServer)
 	if err != nil {
 		logger.Error(err)
 		a.lastErr = err
@@ -198,6 +248,11 @@ func (a *Account) updatePassword() {
 func (a *Account) updateBanInfo() {
 	public.Server.GetDataDb().Exec(uint32(a.id), "update account_info set is_ban=?,ban_ts=?,ban_type=?,ban_duration=? where account_id=?",
 		a.isBan, a.banTs, a.banType, a.banDuration, a.id)
+}
+
+func (a *Account) updateOnlineServer() {
+	const strUpdateSql = "update account_info set online_server=? where account_id=?"
+	public.Server.GetDataDb().Exec(uint32(a.id), strUpdateSql, a.onlineServer, a.id)
 }
 
 func (a *Account) addName(pName *Name) {

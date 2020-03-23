@@ -17,10 +17,11 @@ github.com/golang/protobuf v1.3.5 h1:F768QJ1E9tib+q5Sc8MkdJi1RxLTbRcTf8LJV56aRls
 github.com/golang/protobuf v1.3.5/go.mod h1:6O5/vntMXwX2lRkT1hjjk0nAC1IDOTvTlVgjlRvqsdk=
 github.com/google/go-cmp v0.2.0 h1:+dTQ8DZQJz0Mb/HjFlkptS1FeQ4cWSnN941F8aEG4SQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
+github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/panlibin/vglog v0.0.0-20200317084509-89ab82f206ad h1:KskdRANNHTaiXnKqc32/qR633F+2nmXKArVd9WZkW6I=
 github.com/panlibin/vglog v0.0.0-20200317084509-89ab82f206ad/go.mod h1:aEAG2vUCahNPexsaQn80+KmMEeFL+vJvC3VOtIwsmRU=
-github.com/panlibin/virgo v0.0.0-20200320062156-a1772a36dd09 h1:Ymq5A6A7/CV85sbFzoMAwHp4cKEO4FJeeanMoh615ag=
-github.com/panlibin/virgo v0.0.0-20200320062156-a1772a36dd09/go.mod h1:zjrt7x4zpJFfEVcIKV9HrMKllLxR5tUYhyLl/kGpEyk=
+github.com/panlibin/vgnet v0.0.0-20200320062008-b6a7569a5540 h1:v5UnuuJRitm1l7rFIFRXSV8qK6VC/hnME/7geRc1OGg=
+github.com/panlibin/vgnet v0.0.0-20200320062008-b6a7569a5540/go.mod h1:BBHRnbZ22qleGcxy6F+5Bi2Y9GXRAzPuZCoiS75aPZc=
 github.com/panlibin/virgo v0.0.0-20200321153044-82f0042f41b1 h1:X7E2LhN22B4fXw2Gc3bPxF87m3KmxGJmNpbGbuxW7h4=
 github.com/panlibin/virgo v0.0.0-20200321153044-82f0042f41b1/go.mod h1:zjrt7x4zpJFfEVcIKV9HrMKllLxR5tUYhyLl/kGpEyk=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=

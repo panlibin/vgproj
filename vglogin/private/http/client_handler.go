@@ -97,6 +97,17 @@ func handleLogin(w http.ResponseWriter, pReq *http.Request) {
 				rsp["account_id"] = pAccount.GetId()
 				rsp["token"] = pAccount.GetToken()
 				rsp["expire_ts"] = pAccount.GetTokenExpireTs()
+				mapCharacter := pAccount.GetCharacters()
+				cList := make(map[int32]interface{}, len(mapCharacter))
+				for serverId, pCharacter := range mapCharacter {
+					cList[serverId] = map[string]interface{}{
+						"id":        pCharacter.GetPlayerId(),
+						"name":      pCharacter.GetName(),
+						"combat":    pCharacter.GetCombat(),
+						"update_ts": pCharacter.GetUpdateTs(),
+					}
+				}
+				rsp["characters"] = cList
 			}
 		}
 
@@ -106,5 +117,45 @@ func handleLogin(w http.ResponseWriter, pReq *http.Request) {
 	rsp["code"] = errCode
 
 	rspBuf, _ := json.Marshal(rsp)
+	w.Write(rspBuf)
+}
+
+func handleServerList(w http.ResponseWriter, pReq *http.Request) {
+	var errCode int32 = ec.Unknown
+
+	rsp := make(map[string]interface{}, 8)
+
+	for {
+		strTime := pReq.FormValue("time")
+		strSign := pReq.FormValue("sign")
+
+		reqTime, err := strconv.ParseInt(strTime, 10, 64)
+		if err != nil {
+			errCode = ec.InvalidParam
+			break
+		}
+		if !checkTime(reqTime) {
+			errCode = ec.RequestTimeout
+			break
+		}
+
+		if !checkSign([]string{strTime}, public.Server.GetClientKey(), strSign) {
+			errCode = ec.InvalidSign
+			break
+		}
+
+		pGameServerManager := public.Server.GetGameServerManager()
+		mapServer := pGameServerManager.GrabServerList()
+		defer pGameServerManager.ReleaseServerList()
+		rsp["server"] = mapServer
+
+		errCode = ec.Success
+
+		break
+	}
+
+	rsp["code"] = errCode
+	rspBuf, _ := json.Marshal(rsp)
+
 	w.Write(rspBuf)
 }

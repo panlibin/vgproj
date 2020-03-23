@@ -21,10 +21,10 @@ func (s *Server) Register(rpcServer *grpc.Server) {
 }
 
 func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*globalrpc.Nop, error) {
-	logger.Debug(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
 	if req.Token != public.Server.GetAuthKey() {
 		return &globalrpc.Nop{}, errors.New("err token")
 	}
+	public.Server.GetNodeManager().AddNode(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
 	public.Server.GetCluster().AddNode(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
 
 	return &globalrpc.Nop{}, nil

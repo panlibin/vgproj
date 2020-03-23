@@ -27,7 +27,7 @@ func (n *Name) loadData() error {
 		n.loginType, n.name)
 
 	if err := row.Scan(&n.accountId, &n.createTime); err != nil {
-		logger.Error(err)
+		// logger.Error(err)
 		return err
 	}
 

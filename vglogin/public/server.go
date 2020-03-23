@@ -3,6 +3,7 @@ package public
 import (
 	"vgproj/common/cluster"
 	iaccount "vgproj/vglogin/public/account"
+	igame "vgproj/vglogin/public/game"
 
 	"github.com/panlibin/virgo"
 	"github.com/panlibin/virgo/database"
@@ -12,6 +13,7 @@ import (
 type IServer interface {
 	virgo.IProcedure
 	GetAccountManager() iaccount.IAccountManager
+	GetGameServerManager() igame.IGameServerManager
 	GetCluster() *cluster.Cluster
 	GetDataDb() *database.Mysql
 	GetClientKey() string

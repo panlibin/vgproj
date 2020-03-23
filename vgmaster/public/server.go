@@ -2,6 +2,7 @@ package public
 
 import (
 	"vgproj/common/cluster"
+	icluster "vgproj/vgmaster/public/cluster"
 	igame "vgproj/vgmaster/public/game"
 
 	"github.com/panlibin/virgo"
@@ -13,6 +14,7 @@ type IServer interface {
 	GetAuthKey() string
 	GetDataDb() *database.Mysql
 	GetCluster() *cluster.Cluster
+	GetNodeManager() icluster.INodeManager
 	GetNameManager() igame.INameManager
 	IsDebug() bool
 }
