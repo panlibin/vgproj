@@ -16,6 +16,7 @@ type IServer interface {
 	IsSelfServerId(serverId int32) bool
 	GetAuthKey() string
 	GetDataDb() *database.Mysql
+	GetGlobalDb() *database.Mysql
 	GetOaDb() *database.Mysql
 	GetConfigDb() *database.Mysql
 	GetOpenServerTime() time.Time

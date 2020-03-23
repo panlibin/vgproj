@@ -103,29 +103,29 @@ func (a *Account) Ban(banType int32, banDuration int64) {
 	a.tokenExpireTs = 0
 }
 
-func (this *Account) GetRnd() uint64 {
-	return this.rnd
+func (a *Account) GetRnd() uint64 {
+	return a.rnd
 }
 
-func (this *Account) GenRnd() {
-	this.rnd = rand.Uint64()
+func (a *Account) GenRnd() {
+	a.rnd = rand.Uint64()
 }
 
-func (this *Account) GetOnlineServer() int32 {
-	return this.onlineServer
+func (a *Account) GetOnlineServer() int32 {
+	return a.onlineServer
 }
 
-func (this *Account) Login(serverId int32) {
-	this.onlineServer = serverId
-	this.updateOnlineServer()
+func (a *Account) Login(serverId int32) {
+	a.onlineServer = serverId
+	a.updateOnlineServer()
 }
 
-func (this *Account) Logout(rnd uint64) {
-	if this.rnd != rnd {
+func (a *Account) Logout(rnd uint64) {
+	if a.rnd != rnd {
 		return
 	}
-	this.onlineServer = -1
-	this.updateOnlineServer()
+	a.onlineServer = -1
+	a.updateOnlineServer()
 }
 
 func (a *Account) SetCharacter(playerId int64, serverId int32, name string, combat int64) {

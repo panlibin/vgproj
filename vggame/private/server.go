@@ -8,7 +8,9 @@ import (
 	"vgproj/common/cluster"
 	"vgproj/common/oa"
 	clusthdl "vgproj/vggame/private/cluster"
+	"vgproj/vggame/private/game"
 	"vgproj/vggame/public"
+	igame "vgproj/vggame/public/game"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo"
@@ -42,16 +44,17 @@ type Server struct {
 	*virgo.Procedure
 	envConf envConfig
 
-	pDataDb *database.Mysql
-	pOaDb   *database.Mysql
-	pConfDb *database.Mysql
+	pDataDb   *database.Mysql
+	pGlobalDb *database.Mysql
+	pOaDb     *database.Mysql
+	pConfDb   *database.Mysql
 
 	openServerTime time.Time
 	openServerTs   int64
 
 	pOaWriter *oa.Writer
 	// pConfigManager *config.ConfigManager
-	// pGameManager   *game.GameManager
+	pGameManager *game.GameManager
 	// pGate          *gate.Gate
 	pCluster *cluster.Cluster
 }
@@ -104,6 +107,14 @@ func (s *Server) initEnv() bool {
 
 	s.pDataDb = database.NewMysql(s)
 	err = s.pDataDb.Open(s.envConf.DataDsn, s.envConf.DataDbConnNum)
+	if err != nil {
+		logger.Errorf("Server init connect data database error: %v", err)
+		s.Stop()
+		return false
+	}
+
+	s.pDataDb = database.NewMysql(s)
+	err = s.pGlobalDb.Open(s.envConf.DataDsn, 1)
 	if err != nil {
 		logger.Errorf("Server init connect data database error: %v", err)
 		s.Stop()
@@ -164,13 +175,13 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 		s.pOaWriter = oa.NewWriter(s, s.pOaDb, s.envConf.OaDbConnNum)
 
 		// s.pGate = gate.NewGate()
-		// s.pGameManager = game.NewGameManager(s.pGate.MsgDesc)
-		// if err = s.pGameManager.LoadData(); err != nil {
-		// 	break
-		// }
-		// if err = s.pGameManager.Init(); err != nil {
-		// 	break
-		// }
+		s.pGameManager = game.NewGameManager()
+		if err = s.pGameManager.LoadData(); err != nil {
+			break
+		}
+		if err = s.pGameManager.Init(); err != nil {
+			break
+		}
 
 		s.pCluster = cluster.NewCluster(s, cluster.NodeGame, s.GetServerIdArray(), s.envConf.ClusterAddr, s.GetAuthKey())
 		s.pCluster.SetHandler(&clusthdl.Server{})
@@ -200,9 +211,9 @@ func (s *Server) OnRelease() {
 	if s.pCluster != nil {
 		s.pCluster.Stop()
 	}
-	// if s.pGameManager != nil {
-	// 	s.pGameManager.Release()
-	// }
+	if s.pGameManager != nil {
+		s.pGameManager.Release()
+	}
 
 	if s.pDataDb != nil {
 		s.pDataDb.Close()
@@ -236,6 +247,10 @@ func (s *Server) GetDataDb() *database.Mysql {
 	return s.pDataDb
 }
 
+func (s *Server) GetGlobalDb() *database.Mysql {
+	return s.pGlobalDb
+}
+
 func (s *Server) GetOaDb() *database.Mysql {
 	return s.pOaDb
 }
@@ -256,9 +271,9 @@ func (s *Server) GetOpenServerDay(ts int64) int32 {
 	return int32((ts-vgtime.GetDayZeroTs(s.openServerTs))/(24*3600*1000) + 1)
 }
 
-// func (s *Server) GetGameManager() pub_game.IGameManager {
-// 	return s.pGameManager
-// }
+func (s *Server) GetGameManager() igame.IGameManager {
+	return s.pGameManager
+}
 
 func (s *Server) GetCluster() *cluster.Cluster {
 	return s.pCluster
