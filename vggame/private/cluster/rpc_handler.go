@@ -25,3 +25,11 @@ func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*gl
 
 	return &globalrpc.Nop{}, nil
 }
+
+func (s *Server) Kick(ctx context.Context, req *gamerpc.NotifyKick) (rsp *globalrpc.Nop, err error) {
+	rsp = &globalrpc.Nop{}
+
+	public.Server.GetGate().Kick(req.AccountId)
+
+	return
+}

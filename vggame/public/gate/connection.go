@@ -7,7 +7,6 @@ import (
 )
 
 type IConnection interface {
-	Init()
 	Close(error)
 	Write(proto.Message)
 	LocalAddr() net.Addr

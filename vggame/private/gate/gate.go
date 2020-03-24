@@ -3,6 +3,7 @@ package gate
 import (
 	"sync"
 	ec "vgproj/common/define/err_code"
+	"vgproj/common/util"
 	"vgproj/proto/msg"
 
 	logger "github.com/panlibin/vglog"
@@ -12,18 +13,22 @@ import (
 
 type Gate struct {
 	listener          *websocket.Listener
-	mtx               sync.Mutex
+	connMtx           sync.Mutex
+	acntMtx           sync.Mutex
 	maxConnectionId   uint32
 	mapConnection     map[uint32]*Connection
 	mapAccountSession map[int64]*Connection
-	msgDesc           *MessageDescriptor
+	msgDesc           *util.MessageDescriptor
+	msgRouter         *messageRouter
 }
 
-func NewGate() *Gate {
+func NewGate(msgDesc *util.MessageDescriptor) *Gate {
 	pObj := new(Gate)
 	pObj.mapConnection = make(map[uint32]*Connection, 1024)
 	pObj.mapAccountSession = make(map[int64]*Connection, 1024)
-	pObj.msgDesc = NewMessageDescriptor()
+	pObj.msgDesc = msgDesc
+	pObj.msgRouter = &messageRouter{}
+	pObj.msgRouter.init(msgDesc)
 
 	return pObj
 }
@@ -51,48 +56,55 @@ func (g *Gate) Stop() {
 
 	g.listener.Stop()
 
-	g.mtx.Lock()
+	g.connMtx.Lock()
 	for _, pConnection := range g.mapConnection {
 		pConnection.Close(nil)
 	}
-	g.mtx.Unlock()
+	g.connMtx.Unlock()
 
 	logger.Info("stop gate finish")
 }
 
 func (g *Gate) OnNewConnection(conn network.Connection) {
-	g.mtx.Lock()
+	g.connMtx.Lock()
 	connectionId := g.GenConnectionId()
 	pConnection := NewConnection(g, connectionId, conn)
 	g.mapConnection[connectionId] = pConnection
-	g.mtx.Unlock()
+	g.connMtx.Unlock()
 
 	conn.Accept(pConnection)
 	logger.Debugf("new connection from %v, connectionId = %v", conn.RemoteAddr(), connectionId)
 }
 
 func (g *Gate) OnConnectionClose(connectionId uint32) {
-	g.mtx.Lock()
+	g.connMtx.Lock()
 	delete(g.mapConnection, connectionId)
-	g.mtx.Unlock()
+	g.connMtx.Unlock()
 
 	logger.Debugf("connection closed. remove connectionId = %v", connectionId)
 }
 
 func (g *Gate) AddAccountSession(pConn *Connection) {
+	g.acntMtx.Lock()
 	pOldConn, exist := g.mapAccountSession[pConn.accountId]
 	if exist {
 		pOldConn.Write(&msg.S2C_Disconnect{Code: ec.LoginOnOtherTerminal})
 		pOldConn.Close(nil)
 	}
 	g.mapAccountSession[pConn.accountId] = pConn
+	g.acntMtx.Unlock()
 }
 
 func (g *Gate) RemoveAccountSession(accountId int64) {
+	g.acntMtx.Lock()
 	delete(g.mapAccountSession, accountId)
+	g.acntMtx.Unlock()
 }
 
 func (g *Gate) Kick(accountId int64) bool {
+	g.acntMtx.Lock()
+	defer g.acntMtx.Unlock()
+
 	pConn, exist := g.mapAccountSession[accountId]
 	if exist {
 		pConn.Write(&msg.S2C_Disconnect{Code: ec.LoginOnOtherTerminal})

@@ -37,6 +37,7 @@ func NewAccount(accountId int64) *Account {
 	pObj.id = accountId
 	pObj.mapName = make(map[int32]*Name)
 	pObj.mapCharacter = make(map[int32]iaccount.ICharacter)
+	pObj.onlineServer = -1
 	return pObj
 }
 

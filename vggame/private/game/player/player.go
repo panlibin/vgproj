@@ -5,8 +5,10 @@ import (
 	"vgproj/proto/msg"
 	"vgproj/vggame/public"
 	iplayer "vgproj/vggame/public/game/player"
+	igate "vgproj/vggame/public/gate"
 
 	"github.com/golang/protobuf/proto"
+	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo/util/vgtime"
 )
 
@@ -19,18 +21,25 @@ const (
 	EPlayerStatus_Release
 )
 
+type loadContext struct {
+	cb  func(interface{}, iplayer.IPlayer)
+	ctx interface{}
+}
+
 type Player struct {
 	playerId  int64
 	arrModule [iplayer.PlayerModule_Count]iplayer.IPlayerModule
 	status    EPlayerStatus
 	conn      igate.IConnection
-	cb        func(*Player, error)
+	arrCb     []*loadContext
+	loadCb    *loadContext
 }
 
-func NewPlayer(playerId int64) *Player {
+func newPlayer(playerId int64) *Player {
 	pObj := new(Player)
 	pObj.playerId = playerId
 	pObj.status = EPlayerStatus_Loading
+	pObj.arrCb = make([]*loadContext, 0, 8)
 
 	// pObj.arrModule[player.PlayerModule_Data] = data.NewDataModule(pObj)
 	// pObj.arrModule[player.PlayerModule_Property] = property.NewPropertyModule(pObj)
@@ -43,39 +52,58 @@ func NewPlayer(playerId int64) *Player {
 	return pObj
 }
 
-func (p *Player) Init(cb func(*Player, error)) {
-	p.cb = cb
+func (p *Player) insert(accountId int64, serverId int32, name string, head int32, ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
+	p.loadCb = &loadContext{ctx: ctx, cb: cb}
+	public.Server.GetDataDb().AsyncExec(p.insertCallback, uint32(p.playerId), "insert into player_data(player_id,account_id,server_id,name,head,create_ts) values(?,?,?,?,?,?)",
+		p.playerId, accountId, serverId, name, head, vgtime.Now())
+}
+
+func (p *Player) insertCallback(args []interface{}) {
+	if args[1] != nil {
+		p.returnWaiting(args[1].(error))
+	} else {
+		cbCtx := p.loadCb
+		p.loadCb = nil
+		cbCtx.cb(cbCtx.ctx, p)
+	}
+}
+
+func (p *Player) init(ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
+	p.loadCb = &loadContext{ctx: ctx, cb: cb}
 	var sqlCollect string
 	for _, pModele := range p.arrModule {
-		if len(sqlCollect) > 0 && sqlCollect[len(sqlCollect)-1] != ";" {
+		if len(sqlCollect) > 0 && sqlCollect[len(sqlCollect)-1] != ';' {
 			sqlCollect += ";"
 		}
 		sqlCollect += pModele.GetLoadSql()
 	}
 
-	public.Server.GetDataDb().AsyncQuery(p.InitForward, uint32(p.playerId), sqlCollect)
+	public.Server.GetDataDb().AsyncQuery(p.initForward, uint32(p.playerId), sqlCollect)
 }
 
-func (p *Player) InitForward(args []interface{}) {
+func (p *Player) initForward(args []interface{}) {
 	var rows *sql.Rows
 	var err error
 	if args[0] != nil {
 		rows = args[0].(*sql.Rows)
 	}
+	defer rows.Close()
 	if args[1] != nil {
 		err = args[1].(error)
 	}
 
 	if err != nil {
-
+		p.returnWaiting(err)
+		return
 	}
 
 	for _, pModule := range p.arrModule {
 		err = pModule.OnLoadData(rows)
 		if err != nil {
-			p.returnWaiting(nil)
-			return err
+			p.returnWaiting(err)
+			return
 		}
+		rows.NextResultSet()
 	}
 
 	for _, pModule := range p.arrModule {
@@ -95,12 +123,12 @@ func (p *Player) InitForward(args []interface{}) {
 	}
 	p.status = EPlayerStatus_Offline
 
-	p.returnWaiting(p)
+	p.returnWaiting(nil)
 
-	return nil
+	return
 }
 
-func (p *Player) CreateInit() {
+func (p *Player) createInit() {
 	for _, pModule := range p.arrModule {
 		pModule.OnCreate()
 	}
@@ -143,7 +171,7 @@ func (p *Player) Release() {
 		return
 	}
 	p.status = EPlayerStatus_Release
-	for i := player.PlayerModule_Count - 1; i >= 0; i-- {
+	for i := iplayer.PlayerModule_Count - 1; i >= 0; i-- {
 		pModule := p.arrModule[i]
 		pModule.OnRelease()
 	}
@@ -153,30 +181,9 @@ func (p *Player) GetId() int64 {
 	return p.playerId
 }
 
-func (p *Player) Destroy() {
-	for i, _ := range p.arrModule {
-		p.arrModule[i] = nil
-	}
-	// p.pEventManager.Clear()
-	// p.pEventManager = nil
-	// p.pHandlerHolder = nil
-}
-
 func (p *Player) DailyRefresh(refreshTs int64) {
 	// pData := p.GetModule(player.PlayerModule_Data).(*data.DataModule)
 	// pData.DailyRefresh(refreshTs)
-}
-
-func (p *Player) RegisterMessage(pMsg proto.Message, handler func([]interface{})) {
-	// p.pHandlerHolder.RegisterMessage(pMsg, handler)
-}
-
-func (p *Player) HandleMessage(msgId uint32, pMsg proto.Message) {
-	f := p.pHandlerHolder.GetHandler(msgId)
-	if f == nil {
-		return
-	}
-	f([]interface{}{pMsg})
 }
 
 func (p *Player) SendMessage(msg proto.Message) {
@@ -189,25 +196,28 @@ func (p *Player) GetModule(id int32) interface{} {
 	return p.arrModule[id]
 }
 
-// func (p *Player) returnWaiting(pPlayer player.IPlayer) {
-// 	worker.NewTask(func() {
-// 		for _, sessionId := range p.arrWaitSession {
-// 			public.Server.Resume(sessionId, pPlayer)
-// 		}
-// 		p.arrWaitSession = make([]uint32, 0)
-// 	})
-// }
+func (p *Player) returnWaiting(err error) {
+	var retPlayer iplayer.IPlayer
+	if err == nil {
+		retPlayer = p
+	} else {
+		logger.Errorf("load player error %v, %d", err, p.playerId)
+	}
+	cbCtx := p.loadCb
+	p.loadCb = nil
+	if cbCtx != nil {
+		cbCtx.cb(cbCtx.ctx, retPlayer)
+	}
+	arr := p.arrCb
+	p.arrCb = make([]*loadContext, 0)
+	for _, cbCtx := range arr {
+		cbCtx.cb(cbCtx.ctx, retPlayer)
+	}
+}
 
-// func (p *Player) waitLoadFinish() player.IPlayer {
-// 	sessionId := public.Server.GetRunningSessionId()
-// 	p.arrWaitSession = append(p.arrWaitSession, sessionId)
-// 	ret := public.Server.Yield()
-// 	if ret != nil && len(ret) > 0 {
-// 		return ret[0].(player.IPlayer)
-// 	} else {
-// 		return nil
-// 	}
-// }
+func (p *Player) waitLoadFinish(ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
+	p.arrCb = append(p.arrCb, &loadContext{ctx: ctx, cb: cb})
+}
 
 func (p *Player) GetIpAddr() string {
 	if p.conn == nil {

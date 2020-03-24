@@ -2,10 +2,13 @@ package game
 
 import (
 	"time"
+	"vgproj/common/util"
 	cuslan "vgproj/vggame/private/game/custom_language"
+	"vgproj/vggame/private/game/player"
 	"vgproj/vggame/public"
 	igame "vgproj/vggame/public/game"
 	icuslan "vgproj/vggame/public/game/custom_language"
+	iplayer "vgproj/vggame/public/game/player"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo/util/vgevent"
@@ -18,9 +21,9 @@ type GameManager struct {
 	dailyTimer    *time.Timer
 }
 
-func NewGameManager() *GameManager {
+func NewGameManager(msgDesc *util.MessageDescriptor) *GameManager {
 	pObj := new(GameManager)
-	// pObj.arrModule[Module_Player] = player.NewPlayerManager(pMsgDesc)
+	pObj.arrModule[Module_Player] = player.NewPlayerManager(msgDesc)
 	pObj.arrModule[Module_CustomLanguage] = cuslan.NewCustomLanguageManager()
 	// pObj.arrModule[Module_Mail] = mail.NewMailManager()
 	pObj.pEventManager = vgevent.NewEventManager()
@@ -71,9 +74,9 @@ func (gm *GameManager) GetEventManager() *vgevent.EventManager {
 	return gm.pEventManager
 }
 
-// func (gm *GameManager) GetPlayerManager() pub_player.IPlayerManager {
-// 	return gm.arrModule[Module_Player].(pub_player.IPlayerManager)
-// }
+func (gm *GameManager) GetPlayerManager() iplayer.IPlayerManager {
+	return gm.arrModule[Module_Player].(iplayer.IPlayerManager)
+}
 
 // func (gm *GameManager) GetMailManager() pub_mail.IMailManager {
 // 	return gm.arrModule[Module_Mail].(pub_mail.IMailManager)
@@ -87,5 +90,7 @@ func (gm *GameManager) createDailyTimer(args []interface{}) {
 	nextRefreshTs := vgtime.NextDailyRefreshTs()
 	curTs := vgtime.Now()
 	gm.dailyTimer = public.Server.AfterFunc(time.Duration(nextRefreshTs-curTs)*time.Millisecond, gm.createDailyTimer, nextRefreshTs)
-	gm.pEventManager.Dispatch(&igame.EventDailyRefresh{RefreshTs: args[0].(int64)})
+	if args != nil {
+		gm.pEventManager.Dispatch(&igame.EventDailyRefresh{RefreshTs: args[0].(int64)})
+	}
 }

@@ -1,0 +1,43 @@
+package item
+
+const (
+	ITEM_ST_CURRENCY_MONEY	= 1 // 银两
+	ITEM_ST_CURRENCY_FOOD	= 2				// 粮食
+	ITEM_ST_CURRENCY_SOLDIER	= 3			// 士兵
+	ITEM_ST_CURRENCY_PRESTIGE	= 4			// 名望
+	ITEM_ST_CURRENCY_GOLD	= 5 				// 黄金
+	ITEM_ST_CURRENCY_EXP = 6					// 经验
+	ITEM_ST_CURRENCY_DUNGEON_SCORES	= 7				// 副本积分
+	ITEM_ST_CURRENCY_ACTIVITY_SCORES = 8			// 活动积分
+	ITEM_ST_CURRENCY_DINNER_SCORES = 9			// 宴会积分
+	ITEM_ST_CURRENCY_CONTRIBUTION = 10			// 个人贡献
+	ITEM_ST_CURRENCY_LEAGUE_MONEY = 11			// 联盟财富
+	ITEM_ST_CURRENCY_YAMEN_GREEN = 12			// 衙门绿色药丸
+	ITEM_ST_CURRENCY_VIP_LV = 13
+	ITEM_ST_CURRENCY_VIP_EXP = 14
+	ITEM_ST_CURRENCY_LEAGUE_EXP = 15		// 联盟经验
+	ITEM_ST_CURRENCY_HANLIN_EXP = 16		// 翰林经验
+	ITEM_ST_CURRENCY_WaBaoZangScore = 20
+	ITEM_ST_CURRENCY_DaFengShouScore = 21
+	ITEM_ST_CURRENCY_JiaoTuFeiScore = 22
+	ITEM_ST_CURRENCY_ZhuaZhuangDingScore = 23
+	ITEM_ST_CURRENCY_DemonQueenScore = 24
+)
+
+// 物品大类
+const (
+	ITEM_FT_CURRENCY			= 1			// 货币
+	ITEM_FT_EXP				= 10
+)
+
+const (
+	ITEM_ID_TITLE_MIN = 103001
+	ITEM_ID_TITLE_MAX = 103999
+)
+
+func IsTitle(id int32) bool {
+	if id >= ITEM_ID_TITLE_MIN && id <= ITEM_ID_TITLE_MAX {
+		return true
+	}
+	return false
+}

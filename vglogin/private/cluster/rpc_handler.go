@@ -3,11 +3,15 @@ package cluster
 import (
 	"context"
 	"errors"
+	"vgproj/common/cluster"
+	ec "vgproj/common/define/err_code"
+	"vgproj/proto/gamerpc"
 	"vgproj/proto/globalrpc"
 	"vgproj/proto/loginrpc"
 	"vgproj/vglogin/public"
 
 	logger "github.com/panlibin/vglog"
+	"github.com/panlibin/virgo/util/vgtime"
 	"google.golang.org/grpc"
 )
 
@@ -34,4 +38,51 @@ func (s *Server) PlayerLogout(context.Context, *loginrpc.NotifyLogout) (*globalr
 	logger.Debug("NotifyLogout")
 
 	return &globalrpc.Nop{}, nil
+}
+
+func (s *Server) Login(ctx context.Context, req *loginrpc.ReqLogin) (rsp *loginrpc.RspLogin, err error) {
+	rsp = &loginrpc.RspLogin{}
+
+	pAccount := public.Server.GetAccountManager().GetAccount(req.AccountId)
+	if pAccount == nil {
+		rsp.Code = ec.AccountNotFound
+		return
+	}
+	if pAccount.Lock() != nil {
+		rsp.Code = ec.Unknown
+		return
+	}
+	defer pAccount.Unlock()
+
+	if req.Token == "" || pAccount.GetToken() != req.Token {
+		rsp.Code = ec.InvalidToken
+		return
+	}
+	curTs := vgtime.Now()
+	if pAccount.GetTokenExpireTs() < curTs {
+		rsp.Code = ec.InvalidToken
+		return
+	}
+
+	if pAccount.IsBan() {
+		rsp.Code = ec.AccountBanned
+		return
+	}
+
+	pAccount.GenRnd()
+	onlineServer := pAccount.GetOnlineServer()
+	pAccount.Login(req.ServerId)
+
+	if onlineServer > 0 {
+		pNode := public.Server.GetCluster().GetNode(cluster.NodeGame, onlineServer)
+		if pNode != nil {
+			pGameNode := pNode.(*cluster.GameNode)
+			pGameNode.Kick(context.Background(), &gamerpc.NotifyKick{AccountId: req.AccountId})
+		}
+	}
+
+	rsp.Rnd = pAccount.GetRnd()
+	rsp.Code = ec.Success
+
+	return
 }

@@ -67,7 +67,6 @@ func (c *Client) Run() {
 			c.arrBehavior[c.status]()
 		}
 	}
-	return
 }
 
 func (c *Client) SetStatus(status int32) {
@@ -78,7 +77,7 @@ func (c *Client) GetStatus() int32 {
 	return c.status
 }
 
-func (this *Client) calcSign(params []string) string {
+func (c *Client) calcSign(params []string) string {
 	strSrc := fmt.Sprintf("%s%s", strings.Join(params, ""), GlobalConfig.ClientKey)
 	sum := md5.Sum([]byte(strSrc))
 	return hex.EncodeToString(append(sum[:]))

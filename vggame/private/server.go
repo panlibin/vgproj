@@ -7,10 +7,15 @@ import (
 	"time"
 	"vgproj/common/cluster"
 	"vgproj/common/oa"
+	"vgproj/common/util"
 	clusthdl "vgproj/vggame/private/cluster"
+	"vgproj/vggame/private/config"
 	"vgproj/vggame/private/game"
+	"vgproj/vggame/private/gate"
 	"vgproj/vggame/public"
+	iconfig "vgproj/vggame/public/config"
 	igame "vgproj/vggame/public/game"
+	igate "vgproj/vggame/public/gate"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo"
@@ -52,11 +57,11 @@ type Server struct {
 	openServerTime time.Time
 	openServerTs   int64
 
-	pOaWriter *oa.Writer
-	// pConfigManager *config.ConfigManager
-	pGameManager *game.GameManager
-	// pGate          *gate.Gate
-	pCluster *cluster.Cluster
+	pOaWriter      *oa.Writer
+	pConfigManager *config.ConfigManager
+	pGameManager   *game.GameManager
+	pGate          *gate.Gate
+	pCluster       *cluster.Cluster
 }
 
 func NewServer() *Server {
@@ -113,7 +118,7 @@ func (s *Server) initEnv() bool {
 		return false
 	}
 
-	s.pDataDb = database.NewMysql(s)
+	s.pGlobalDb = database.NewMysql(s)
 	err = s.pGlobalDb.Open(s.envConf.DataDsn, 1)
 	if err != nil {
 		logger.Errorf("Server init connect data database error: %v", err)
@@ -167,15 +172,16 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 
 		s.openServerTs = s.openServerTime.Unix() * 1000
 
-		// s.pConfigManager = config.NewConfigManager()
-		// if err = s.pConfigManager.LoadConfig(); err != nil {
-		// 	break
-		// }
+		s.pConfigManager = config.NewConfigManager()
+		if err = s.pConfigManager.LoadConfig(); err != nil {
+			break
+		}
 
 		s.pOaWriter = oa.NewWriter(s, s.pOaDb, s.envConf.OaDbConnNum)
 
-		// s.pGate = gate.NewGate()
-		s.pGameManager = game.NewGameManager()
+		msgDesc := util.NewMessageDescriptor()
+		s.pGate = gate.NewGate(msgDesc)
+		s.pGameManager = game.NewGameManager(msgDesc)
 		if err = s.pGameManager.LoadData(); err != nil {
 			break
 		}
@@ -190,9 +196,9 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 		}
 		s.pCluster.AddNode(cluster.NodeMaster, []int32{1}, s.envConf.MasterAddr)
 
-		// if err = s.pGate.Start(s.envConf.ListenAddr, vg_net.BigEndian); err != nil {
-		// 	break
-		// }
+		if err = s.pGate.Start(s.envConf.ListenAddr); err != nil {
+			break
+		}
 
 		break
 	}
@@ -205,9 +211,9 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 }
 
 func (s *Server) OnRelease() {
-	// if s.pGate != nil {
-	// 	s.pGate.Stop()
-	// }
+	if s.pGate != nil {
+		s.pGate.Stop()
+	}
 	if s.pCluster != nil {
 		s.pCluster.Stop()
 	}
@@ -283,13 +289,13 @@ func (s *Server) GetOaWriter() *oa.Writer {
 	return s.pOaWriter
 }
 
-// func (s *Server) GetGate() gate2.IGate {
-// 	return s.pGate
-// }
+func (s *Server) GetGate() igate.IGate {
+	return s.pGate
+}
 
-// func (s *Server) GetConfigManager() config2.IConfigManager {
-// 	return s.pConfigManager
-// }
+func (s *Server) GetConfigManager() iconfig.IConfigManager {
+	return s.pConfigManager
+}
 
 func (s *Server) IsDebug() bool {
 	return s.envConf.Debug != 0

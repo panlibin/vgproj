@@ -4,6 +4,9 @@ import (
 	"time"
 	"vgproj/common/cluster"
 	"vgproj/common/oa"
+	iconfig "vgproj/vggame/public/config"
+	igame "vgproj/vggame/public/game"
+	igate "vgproj/vggame/public/gate"
 
 	"github.com/panlibin/virgo"
 	"github.com/panlibin/virgo/database"
@@ -22,11 +25,11 @@ type IServer interface {
 	GetOpenServerTime() time.Time
 	GetOpenServerTs() int64
 	GetOpenServerDay(ts int64) int32
-	// GetGameManager() game.IGameManager
+	GetGameManager() igame.IGameManager
 	GetCluster() *cluster.Cluster
 	GetOaWriter() *oa.Writer
-	// GetGate() gate.IGate
-	// GetConfigManager() config.IConfigManager
+	GetGate() igate.IGate
+	GetConfigManager() iconfig.IConfigManager
 	IsDebug() bool
 }
 

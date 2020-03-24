@@ -4,7 +4,9 @@ option go_package = "vgproj/proto/gamerpc";
 
 import "globalrpc/msg_nop.proto";
 import "globalrpc/msg_server_auth.proto";
+import "gamerpc/msg_kick.proto";
 
 service Game {
     rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
+    rpc Kick(NotifyKick) returns(globalrpc.nop);
 }

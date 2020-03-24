@@ -35,6 +35,21 @@ func NewMasterNode(pCluster *Cluster, serverType int32, serverID []int32, ip str
 			}
 			time.Sleep(time.Second * 3)
 		}
+
+		for !pObj.quit {
+			rspServerList, err := pObj.GetServerList(context.Background(), &globalrpc.ReqServerList{})
+			if err == nil {
+				for _, serverInfo := range rspServerList.List {
+					if pObj.pCluster.ip == serverInfo.Ip || serverInfo.ServerType == NodeMaster {
+						continue
+					}
+					pObj.pCluster.AddNode(serverInfo.ServerType, serverInfo.ServerId, serverInfo.Ip)
+				}
+
+				break
+			}
+			time.Sleep(time.Second * 3)
+		}
 	}()
 
 	return pObj

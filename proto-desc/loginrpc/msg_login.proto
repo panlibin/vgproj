@@ -5,8 +5,7 @@ option go_package = "vgproj/proto/loginrpc";
 message ReqLogin {
     int64 account_id = 1;
     string token = 2;
-    string ip = 3;
-    int32 server_id = 4;
+    int32 server_id = 3;
 }
 
 message RspLogin {
@@ -21,12 +20,4 @@ message NotifyLogout {
     int64 player_id = 4;
     string name = 5;
     int64 combat = 6;
-}
-
-message ReqKick {
-    int64 account_id = 1;
-}
-
-message RspKick {
-    bool suc = 1;
 }
