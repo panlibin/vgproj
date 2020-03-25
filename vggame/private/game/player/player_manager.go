@@ -5,8 +5,11 @@ import (
 	ec "vgproj/common/define/err_code"
 	"vgproj/common/util"
 	"vgproj/vggame/public"
+	igame "vgproj/vggame/public/game"
 	iplayer "vgproj/vggame/public/game/player"
 	igate "vgproj/vggame/public/gate"
+
+	"github.com/panlibin/virgo/util/vgevent"
 )
 
 const ServerIdOffset int64 = 10000000
@@ -74,7 +77,7 @@ func (pm *PlayerManager) OnLoadData() error {
 }
 
 func (pm *PlayerManager) OnInit() error {
-	// public.Server.GetGameManager().GetEventManager().Register(igame.EventType_DailyRefresh, pm.onDailyRefresh)
+	public.Server.GetGameManager().GetEventManager().Register(igame.EventType_DailyRefresh, pm.onDailyRefresh)
 	return nil
 }
 
@@ -121,7 +124,7 @@ func (pm *PlayerManager) CreatePlayer(accountId int64, serverId int32, name stri
 
 func (pm *PlayerManager) createPlayerInsertCallback(ctx interface{}, iPlayer iplayer.IPlayer) {
 	if iPlayer == nil {
-		pInsertCtx := ctx.(insertContext)
+		pInsertCtx := ctx.(*insertContext)
 		delete(pm.mapPlayer, pInsertCtx.playerId)
 		delete(pm.mapAccountPlayerId[pInsertCtx.serverId], pInsertCtx.accountId)
 		delete(pm.mapNamePlayerId, pInsertCtx.name)
@@ -134,7 +137,7 @@ func (pm *PlayerManager) createPlayerInsertCallback(ctx interface{}, iPlayer ipl
 }
 
 func (pm *PlayerManager) createPlayerInitCallback(ctx interface{}, iPlayer iplayer.IPlayer) {
-	pInsertCtx := ctx.(insertContext)
+	pInsertCtx := ctx.(*insertContext)
 	if iPlayer == nil {
 		pm.mapPlayer[pInsertCtx.playerId] = nil
 
@@ -261,4 +264,19 @@ func (pm *PlayerManager) genPlayerId(serverId int32) int64 {
 
 func (pm *PlayerManager) GetMessageRouter() igate.IMessageRouter {
 	return pm.msgRouter
+}
+
+func (pm *PlayerManager) onDailyRefresh(event vgevent.IEvent) {
+	pEvent := event.(*igame.EventDailyRefresh)
+	for _, pPlayer := range pm.mapOnlinePlayer {
+		pPlayer.DailyRefresh(pEvent.RefreshTs)
+	}
+}
+
+func (pm *PlayerManager) GetOnlinePlayerCount() int32 {
+	return int32(len(pm.mapOnlinePlayer))
+}
+
+func (pm *PlayerManager) GetTotalPlayerCount() int32 {
+	return int32(len(pm.mapPlayer))
 }

@@ -45,5 +45,5 @@ func (w *Writer) Write(tableName string, args ...interface{}) {
 	if dbIdx >= w.connNum {
 		dbIdx -= w.connNum
 	}
-	w.pDb.AsyncExec(nil, uint32(dbIdx), strSQL, args...)
+	w.pDb.AsyncExec(nil, nil, uint32(dbIdx), strSQL, args...)
 }

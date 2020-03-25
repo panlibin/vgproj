@@ -144,9 +144,9 @@ func (nm *NodeManager) GetAllNode() map[int32]map[int32]*NodeInfo {
 
 func (nm *NodeManager) insert(node *NodeInfo) {
 	tmpServerId := vgstr.FormatInt32ArrayToString(node.ServerId, ",")
-	public.Server.GetDataDb().AsyncExec(nil, 0, "insert into node_list values(?,?,?)", node.ServerType, tmpServerId, node.Ip)
+	public.Server.GetDataDb().AsyncExec(nil, nil, 0, "insert into node_list values(?,?,?)", node.ServerType, tmpServerId, node.Ip)
 }
 
 func (nm *NodeManager) delete(ip string) {
-	public.Server.GetDataDb().AsyncExec(nil, 0, "delete from node_list where ip=?", ip)
+	public.Server.GetDataDb().AsyncExec(nil, nil, 0, "delete from node_list where ip=?", ip)
 }

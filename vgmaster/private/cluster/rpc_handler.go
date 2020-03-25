@@ -7,7 +7,7 @@ import (
 	"vgproj/proto/masterrpc"
 	"vgproj/vgmaster/public"
 
-	logger "github.com/panlibin/vglog"
+	// logger "github.com/panlibin/vglog"
 	"google.golang.org/grpc"
 )
 
@@ -30,32 +30,34 @@ func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*gl
 	return &globalrpc.Nop{}, nil
 }
 
-func (s *Server) GetServerList(context.Context, *globalrpc.ReqServerList) (*globalrpc.RspServerList, error) {
-	logger.Debug("Auth")
+func (s *Server) GetServerList(context.Context, *globalrpc.ReqServerList) (rsp *globalrpc.RspServerList, err error) {
+	rsp = &globalrpc.RspServerList{}
+	pCluster := public.Server.GetCluster()
+	mapAllNode := pCluster.GrabAllNode()
+	defer pCluster.ReleaseAllNode()
+	for _, mapTypeNode := range mapAllNode {
+		for _, pNode := range mapTypeNode {
+			pNodeInfo := new(globalrpc.ServerInfo)
+			pNodeInfo.ServerType, pNodeInfo.ServerId, pNodeInfo.Ip = pNode.GetServerInfo()
+			rsp.List = append(rsp.List, pNodeInfo)
+		}
+	}
 
-	return &globalrpc.RspServerList{}, nil
+	return
 }
 
 func (s *Server) GrabPlayerName(context.Context, *masterrpc.ReqGrabPlayerName) (*masterrpc.RspGrabPlayerName, error) {
-	logger.Debug("Auth")
-
 	return &masterrpc.RspGrabPlayerName{}, nil
 }
 
 func (s *Server) GrabGuildName(context.Context, *masterrpc.ReqGrabGuildName) (*masterrpc.RspGrabGuildName, error) {
-	logger.Debug("Auth")
-
 	return &masterrpc.RspGrabGuildName{}, nil
 }
 
 func (s *Server) ReleasePlayerName(context.Context, *masterrpc.NotifyReleasePlayerName) (*globalrpc.Nop, error) {
-	logger.Debug("Auth")
-
 	return &globalrpc.Nop{}, nil
 }
 
 func (s *Server) ReleaseGuildName(context.Context, *masterrpc.NotifyReleaseGuildName) (*globalrpc.Nop, error) {
-	logger.Debug("Auth")
-
 	return &globalrpc.Nop{}, nil
 }

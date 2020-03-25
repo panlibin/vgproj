@@ -102,19 +102,19 @@ func (nm *NameManager) ReleaseGuildName(name string) {
 }
 
 func (nm *NameManager) insertPlayerName(name string) {
-	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "insert into global_player_name values(?)", name)
+	public.Server.GetDataDb().AsyncExec(nil, nil, nm.getDbIdx(), "insert into global_player_name values(?)", name)
 }
 
 func (nm *NameManager) deletePlayerName(name string) {
-	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "delete from global_player_name where `name`=?", name)
+	public.Server.GetDataDb().AsyncExec(nil, nil, nm.getDbIdx(), "delete from global_player_name where `name`=?", name)
 }
 
 func (nm *NameManager) insertGuildName(name string) {
-	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "insert into global_guild_name values(?)", name)
+	public.Server.GetDataDb().AsyncExec(nil, nil, nm.getDbIdx(), "insert into global_guild_name values(?)", name)
 }
 
 func (nm *NameManager) deleteGuildName(name string) {
-	public.Server.GetDataDb().AsyncExec(nil, nm.getDbIdx(), "delete from global_guild_name where `name`=?", name)
+	public.Server.GetDataDb().AsyncExec(nil, nil, nm.getDbIdx(), "delete from global_guild_name where `name`=?", name)
 }
 
 func (nm *NameManager) getDbIdx() uint32 {

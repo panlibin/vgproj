@@ -65,6 +65,6 @@ func (cl *CustomLanguageManager) AddLanguageValue(key string, mapLanVal map[int3
 	cl.mapLan[key] = mapLanVal
 
 	for k, v := range mapLanVal {
-		public.Server.GetGlobalDb().AsyncExec(nil, 0, sqlInsertCustomLanguage, key, k, v)
+		public.Server.GetGlobalDb().AsyncExec(nil, nil, 0, sqlInsertCustomLanguage, key, k, v)
 	}
 }

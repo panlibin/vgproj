@@ -4,11 +4,14 @@ import (
 	"database/sql"
 	"vgproj/proto/msg"
 	"vgproj/vggame/public"
+	iconfig "vgproj/vggame/public/config"
+	"vgproj/vggame/public/define/item"
 	iplayer "vgproj/vggame/public/game/player"
 	igate "vgproj/vggame/public/gate"
 
 	"github.com/golang/protobuf/proto"
 	logger "github.com/panlibin/vglog"
+	"github.com/panlibin/virgo/util/vgevent"
 	"github.com/panlibin/virgo/util/vgtime"
 )
 
@@ -27,12 +30,13 @@ type loadContext struct {
 }
 
 type Player struct {
-	playerId  int64
-	arrModule [iplayer.PlayerModule_Count]iplayer.IPlayerModule
-	status    EPlayerStatus
-	conn      igate.IConnection
-	arrCb     []*loadContext
-	loadCb    *loadContext
+	playerId      int64
+	arrModule     [iplayer.PlayerModule_Count]iPlayerModule
+	status        EPlayerStatus
+	conn          igate.IConnection
+	arrCb         []*loadContext
+	loadCb        *loadContext
+	pEventManager *vgevent.EventManager
 }
 
 func newPlayer(playerId int64) *Player {
@@ -40,27 +44,28 @@ func newPlayer(playerId int64) *Player {
 	pObj.playerId = playerId
 	pObj.status = EPlayerStatus_Loading
 	pObj.arrCb = make([]*loadContext, 0, 8)
+	pObj.pEventManager = vgevent.NewEventManager()
 
-	// pObj.arrModule[player.PlayerModule_Data] = data.NewDataModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Property] = property.NewPropertyModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Item] = item.NewItemModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Hero] = hero.NewHeroModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Mail] = mail.NewMailModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Vip] = vip.NewVipModule(pObj)
-	// pObj.arrModule[player.PlayerModule_Settings] = settings.NewSettingsModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Data] = newDataModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Property] = newPropertyModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Item] = newItemModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Hero] = newHeroModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Mail] = newMailModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Vip] = newVipModule(pObj)
+	pObj.arrModule[iplayer.PlayerModule_Settings] = newSettingsModule(pObj)
 
 	return pObj
 }
 
 func (p *Player) insert(accountId int64, serverId int32, name string, head int32, ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
 	p.loadCb = &loadContext{ctx: ctx, cb: cb}
-	public.Server.GetDataDb().AsyncExec(p.insertCallback, uint32(p.playerId), "insert into player_data(player_id,account_id,server_id,name,head,create_ts) values(?,?,?,?,?,?)",
-		p.playerId, accountId, serverId, name, head, vgtime.Now())
+	public.Server.GetDataDb().AsyncExec(nil, p.insertCallback, uint32(p.playerId), "insert into player_data(player_id,account_id,server_id,name,head,sex,lev,`exp`,create_ts)"+
+		" values(?,?,?,?,?,0,1,0,?)", p.playerId, accountId, serverId, name, head, vgtime.Now())
 }
 
 func (p *Player) insertCallback(args []interface{}) {
-	if args[1] != nil {
-		p.returnWaiting(args[1].(error))
+	if args[2] != nil {
+		p.returnWaiting(args[2].(error))
 	} else {
 		cbCtx := p.loadCb
 		p.loadCb = nil
@@ -75,30 +80,30 @@ func (p *Player) init(ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
 		if len(sqlCollect) > 0 && sqlCollect[len(sqlCollect)-1] != ';' {
 			sqlCollect += ";"
 		}
-		sqlCollect += pModele.GetLoadSql()
+		sqlCollect += pModele.getLoadSql()
 	}
 
-	public.Server.GetDataDb().AsyncQuery(p.initForward, uint32(p.playerId), sqlCollect)
+	public.Server.GetDataDb().AsyncQuery(nil, p.initForward, uint32(p.playerId), sqlCollect)
 }
 
 func (p *Player) initForward(args []interface{}) {
 	var rows *sql.Rows
 	var err error
-	if args[0] != nil {
-		rows = args[0].(*sql.Rows)
-	}
-	defer rows.Close()
 	if args[1] != nil {
-		err = args[1].(error)
+		rows = args[1].(*sql.Rows)
+	}
+	if args[2] != nil {
+		err = args[2].(error)
 	}
 
 	if err != nil {
 		p.returnWaiting(err)
 		return
 	}
+	defer rows.Close()
 
 	for _, pModule := range p.arrModule {
-		err = pModule.OnLoadData(rows)
+		err = pModule.onLoadData(rows)
 		if err != nil {
 			p.returnWaiting(err)
 			return
@@ -107,19 +112,19 @@ func (p *Player) initForward(args []interface{}) {
 	}
 
 	for _, pModule := range p.arrModule {
-		pModule.OnInit1()
+		pModule.onInit1()
 	}
 	for _, pModule := range p.arrModule {
-		pModule.OnInit2()
+		pModule.onInit2()
 	}
 	for _, pModule := range p.arrModule {
-		pModule.OnInit3()
+		pModule.onInit3()
 	}
 	for _, pModule := range p.arrModule {
-		pModule.OnInit4()
+		pModule.onInit4()
 	}
 	for _, pModule := range p.arrModule {
-		pModule.OnInit5()
+		pModule.onInit5()
 	}
 	p.status = EPlayerStatus_Offline
 
@@ -130,7 +135,7 @@ func (p *Player) initForward(args []interface{}) {
 
 func (p *Player) createInit() {
 	for _, pModule := range p.arrModule {
-		pModule.OnCreate()
+		pModule.onCreate()
 	}
 }
 
@@ -142,7 +147,7 @@ func (p *Player) Login(conn igate.IConnection) {
 	p.status = EPlayerStatus_Online
 	p.conn = conn
 	for _, pModule := range p.arrModule {
-		pModule.OnLogin()
+		pModule.onLogin()
 	}
 	pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
 	pPlayerManager.SetPlayerOnline(p.playerId)
@@ -156,7 +161,7 @@ func (p *Player) Logout() {
 	}
 	p.status = EPlayerStatus_Offline
 	for _, pModule := range p.arrModule {
-		pModule.OnLogout()
+		pModule.onLogout()
 	}
 	p.conn = nil
 	pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
@@ -173,7 +178,7 @@ func (p *Player) Release() {
 	p.status = EPlayerStatus_Release
 	for i := iplayer.PlayerModule_Count - 1; i >= 0; i-- {
 		pModule := p.arrModule[i]
-		pModule.OnRelease()
+		pModule.onRelease()
 	}
 }
 
@@ -182,8 +187,8 @@ func (p *Player) GetId() int64 {
 }
 
 func (p *Player) DailyRefresh(refreshTs int64) {
-	// pData := p.GetModule(player.PlayerModule_Data).(*data.DataModule)
-	// pData.DailyRefresh(refreshTs)
+	pData := p.GetModule(iplayer.PlayerModule_Data).(*dataModule)
+	pData.DailyRefresh(refreshTs)
 }
 
 func (p *Player) SendMessage(msg proto.Message) {
@@ -224,4 +229,120 @@ func (p *Player) GetIpAddr() string {
 		return ""
 	}
 	return p.conn.RemoteAddr().String()
+}
+
+func (p *Player) GetEventManager() *vgevent.EventManager {
+	return p.pEventManager
+}
+
+func (p *Player) splitThings(mapThings map[int32]int64) (mapAttr map[int32]int64, mapProp map[int32]int64, mapItem map[int32]int64, mapTitle map[int32]int64) {
+	mapAttr = make(map[int32]int64)
+	mapProp = make(map[int32]int64)
+	mapItem = make(map[int32]int64)
+
+	pItemConfMgr := public.Server.GetConfigManager().GetConfig(iconfig.Config_Item).(iconfig.IItemConfig)
+	for k, v := range mapThings {
+		if item.IsTitle(k) {
+			mapTitle[k] = 1
+		} else {
+			pItemConf := pItemConfMgr.GetConf(k)
+			if pItemConf == nil {
+				logger.Warningf("unknown item id %d", k)
+				continue
+			}
+			if pItemConf.FirstType == item.ITEM_FT_CURRENCY {
+				mapProp[k] = v
+			} else if pItemConf.FirstType == item.ITEM_FT_EXP {
+				mapAttr[k] = v
+			} else {
+				mapItem[k] = v
+			}
+		}
+	}
+
+	return
+}
+
+func (p *Player) AddThings(mapThings map[int32]int64, source int32, sourceExt string) {
+	mapAttr, mapProp, mapItem, mapTitle := p.splitThings(mapThings)
+
+	if len(mapProp) > 0 {
+		pPropModule := p.GetModule(iplayer.PlayerModule_Property).(*propertyModule)
+		pPropModule.AddProps(mapProp, source, sourceExt)
+	}
+
+	if len(mapItem) > 0 {
+		pItemModule := p.GetModule(iplayer.PlayerModule_Item).(*itemModule)
+		pItemModule.AddItems(mapItem, source, sourceExt)
+	}
+
+	if len(mapAttr) > 0 {
+		for k, v := range mapAttr {
+			switch k {
+			case item.ITEM_ST_CURRENCY_EXP:
+				pDataModule := p.GetModule(iplayer.PlayerModule_Data).(*dataModule)
+				pDataModule.AddExp(v, source, sourceExt)
+			case item.ITEM_ST_CURRENCY_VIP_LV:
+				pVipModule := p.GetModule(iplayer.PlayerModule_Vip).(*vipModule)
+				pVipModule.AddVipLev(int32(v))
+			case item.ITEM_ST_CURRENCY_VIP_EXP:
+				pVipModule := p.GetModule(iplayer.PlayerModule_Vip).(*vipModule)
+				pVipModule.AddVipExp(int32(v))
+			}
+		}
+	}
+
+	if len(mapTitle) > 0 {
+		for k, v := range mapTitle {
+			logger.Debug(k, v)
+		}
+	}
+
+	return
+}
+
+func (p *Player) IsEnoughThings(mapConsume map[int32]int64) bool {
+	_, mapProps, mapItems, _ := p.splitThings(mapConsume)
+	pPropModule := p.GetModule(iplayer.PlayerModule_Property).(*propertyModule)
+	pItemModule := p.GetModule(iplayer.PlayerModule_Item).(*itemModule)
+
+	if len(mapItems) > 0 {
+		if !pItemModule.IsEnoughItems(mapItems) {
+			return false
+		}
+	}
+	if len(mapProps) > 0 {
+		if !pPropModule.IsEnoughProps(mapProps) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (p *Player) ConsumeThings(mapConsume map[int32]int64, source int32, sourceExt string) bool {
+	_, mapProps, mapItems, _ := p.splitThings(mapConsume)
+
+	pPropModule := p.GetModule(iplayer.PlayerModule_Property).(*propertyModule)
+	pItemModule := p.GetModule(iplayer.PlayerModule_Item).(*itemModule)
+
+	if len(mapItems) > 0 {
+		if !pItemModule.IsEnoughItems(mapItems) {
+			return false
+		}
+	}
+	if len(mapProps) > 0 {
+		if !pPropModule.IsEnoughProps(mapProps) {
+			return false
+		}
+	}
+
+	if len(mapItems) > 0 {
+		pItemModule.SubItems(mapItems, source, sourceExt)
+	}
+	if len(mapProps) > 0 {
+		pPropModule.SubProps(mapProps, source, sourceExt)
+	}
+
+	return true
 }

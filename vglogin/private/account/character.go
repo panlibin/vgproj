@@ -59,6 +59,6 @@ func (c *Character) update() {
 		return
 	}
 	const strUpdateSql = "update character_info set name=?,combat=? where player_id=?"
-	public.Server.GetDataDb().AsyncExec(nil, uint32(c.accountId), strUpdateSql, c.name, c.combat, c.id)
+	public.Server.GetDataDb().AsyncExec(nil, nil, uint32(c.accountId), strUpdateSql, c.name, c.combat, c.id)
 	c.needUpdate = false
 }

@@ -7,8 +7,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
 	"vgproj/dummycli/client"
 	iaccount "vgproj/vglogin/public/account"
+
+	logger "github.com/panlibin/vglog"
 )
 
 func main() {
@@ -29,11 +32,16 @@ func main() {
 
 	wg := sync.WaitGroup{}
 
-	for i := 0; i < 1; i++ {
-		pClient := client.NewClient(iaccount.LoginTypeCustom, fmt.Sprintf("test%04d", i), "ababcc", &wg)
-		//pClient := client.NewClient(account.LoginType_Custom, "test0000", "ababcc", &wg)
-		go pClient.Run()
+	tm := time.Now()
+	for i := 0; i < 100; i++ {
+		for j := 0; j < 10; j++ {
+			pClient := client.NewClient(iaccount.LoginTypeCustom, fmt.Sprintf("test%04d", i*10+j), "ababcc", &wg)
+			//pClient := client.NewClient(account.LoginType_Custom, "test0000", "ababcc", &wg)
+			go pClient.Run()
+		}
+		time.Sleep(time.Millisecond * 10)
 	}
 
 	wg.Wait()
+	logger.Debug(time.Now().Sub(tm))
 }

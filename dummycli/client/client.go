@@ -2,22 +2,41 @@ package client
 
 import (
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 
 	ec "vgproj/common/define/err_code"
+	"vgproj/common/util"
+	"vgproj/proto/msg"
 
 	"github.com/golang/protobuf/proto"
 	logger "github.com/panlibin/vglog"
 	network "github.com/panlibin/vgnet"
+	"github.com/panlibin/vgnet/websocket"
 	"github.com/panlibin/virgo/util/vgtime"
 )
+
+var msgDesc *util.MessageDescriptor
+
+func init() {
+	msgDesc = util.NewMessageDescriptor()
+	msgDesc.Register(&msg.C2S_Login{})
+	msgDesc.Register(&msg.S2C_Login{})
+	msgDesc.Register(&msg.C2S_CreateCharacter{})
+	msgDesc.Register(&msg.S2C_CreateCharacter{})
+	msgDesc.Register(&msg.S2C_LoginFinish{})
+}
 
 type Client struct {
 	loginType   int32
@@ -50,6 +69,8 @@ func NewClient(loginType int32, accountName string, password string, pWg *sync.W
 	pObj.arrBehavior[ClientStatus_LoginAccount] = pObj.LoginAccount
 	pObj.arrBehavior[ClientStatus_RegisterAccount] = pObj.RegisterAccount
 	pObj.arrBehavior[ClientStatus_GetServerInfo] = pObj.GetServerInfo
+	pObj.arrBehavior[ClientStatus_LoginGame] = pObj.LoginGame
+	pObj.arrBehavior[ClientStatus_CreateCharacter] = pObj.CreateCharacter
 
 	return pObj
 }
@@ -207,10 +228,128 @@ func (c *Client) GetServerInfo() {
 
 	if rsp.Code == ec.Success {
 		logger.Debugf("%s: get server info suc", c.accountName)
-		c.gsAddr = rsp.Server[1].Addr
-		c.SetStatus(ClientStatus_Close)
+		c.gsAddr = "ws://" + rsp.Server[1].Addr
+		c.SetStatus(ClientStatus_LoginGame)
 	} else {
 		logger.Debugf("%s: get server info fail", c.accountName)
 		c.SetStatus(ClientStatus_Close)
 	}
+}
+
+func (c *Client) LoginGame() {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	bConnectSuc := false
+	websocket.Dialer.Dial(c.gsAddr, func(conn network.Connection, e error) {
+		if e != nil {
+			return
+		}
+		conn.Accept(c)
+		c.conn = conn
+		bConnectSuc = true
+
+		wg.Done()
+	})
+	wg.Wait()
+
+	if !bConnectSuc {
+		c.SetStatus(ClientStatus_Close)
+	}
+
+	pMsgReq := new(msg.C2S_Login)
+	pMsgReq.AccountId = c.accountId
+	pMsgReq.Token = c.token
+	pMsgReq.ServerId = 1
+	c.Write(pMsgReq)
+	pMsgRsp := c.WaitResponse(&msg.S2C_Login{}).(*msg.S2C_Login)
+	if pMsgRsp.Code != ec.Success {
+		logger.Debugf("%s: login game server fail", c.accountName)
+		c.SetStatus(ClientStatus_Close)
+		return
+	}
+	logger.Debugf("%s: login game server suc", c.accountName)
+	if pMsgRsp.PlayerId == 0 {
+		c.SetStatus(ClientStatus_CreateCharacter)
+		return
+	} else {
+		c.SetStatus(ClientStatus_Close)
+		return
+	}
+}
+
+func (c *Client) CreateCharacter() {
+	pMsgReq := new(msg.C2S_CreateCharacter)
+	pMsgReq.Name = strconv.FormatUint(rand.Uint64(), 16)
+	c.Write(pMsgReq)
+	pMsgRsp := c.WaitResponse(&msg.S2C_CreateCharacter{}).(*msg.S2C_CreateCharacter)
+	if pMsgRsp.Code != ec.Success {
+		c.SetStatus(ClientStatus_Close)
+		return
+	} else {
+		logger.Debugf("%s: create character success", c.accountName)
+		c.SetStatus(ClientStatus_Close)
+		return
+	}
+}
+
+func (c *Client) Write(msg proto.Message) {
+	c.conn.Write(msg)
+}
+
+func (c *Client) WaitResponse(msg proto.Message) proto.Message {
+	c.waitMsgId = msgDesc.GetMessageId(msg)
+	rsp := <-c.waitChan
+	c.waitMsgId = 0
+	return rsp
+}
+
+func (c *Client) OnClose(err error) {
+	if err != nil {
+		logger.Debug(err)
+	}
+}
+
+func (c *Client) DoRead(r io.Reader) error {
+	msgBuf, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+
+	msgId := binary.BigEndian.Uint32(msgBuf[:4])
+	msgType, exist := msgDesc.GetMessageType(msgId)
+	if !exist {
+		logger.Errorf("receive unregister message id = %v", msgId)
+		return errors.New("receive unregister message")
+	}
+	msg := reflect.New(msgType).Interface().(proto.Message)
+	err = proto.Unmarshal(msgBuf[4:], msg)
+	if err != nil {
+		return err
+	}
+	if msgId == c.waitMsgId {
+		c.waitChan <- msg
+	}
+
+	return nil
+}
+
+func (c *Client) DoWrite(w io.Writer, m interface{}) error {
+	msg, ok := m.(proto.Message)
+	if !ok {
+		return errors.New("message convert to proto buffer fail")
+	}
+
+	msgId := msgDesc.GetMessageId(msg)
+	msgBuf, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	msgLen := len(msgBuf)
+	writeBuf := make([]byte, msgLen+4)
+	binary.BigEndian.PutUint32(writeBuf, msgId)
+	copy(writeBuf[4:], msgBuf)
+
+	_, err = w.Write(writeBuf)
+	return err
 }

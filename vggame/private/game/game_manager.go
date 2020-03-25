@@ -4,10 +4,12 @@ import (
 	"time"
 	"vgproj/common/util"
 	cuslan "vgproj/vggame/private/game/custom_language"
+	"vgproj/vggame/private/game/mail"
 	"vgproj/vggame/private/game/player"
 	"vgproj/vggame/public"
 	igame "vgproj/vggame/public/game"
 	icuslan "vgproj/vggame/public/game/custom_language"
+	imail "vgproj/vggame/public/game/mail"
 	iplayer "vgproj/vggame/public/game/player"
 
 	logger "github.com/panlibin/vglog"
@@ -25,7 +27,7 @@ func NewGameManager(msgDesc *util.MessageDescriptor) *GameManager {
 	pObj := new(GameManager)
 	pObj.arrModule[Module_Player] = player.NewPlayerManager(msgDesc)
 	pObj.arrModule[Module_CustomLanguage] = cuslan.NewCustomLanguageManager()
-	// pObj.arrModule[Module_Mail] = mail.NewMailManager()
+	pObj.arrModule[Module_Mail] = mail.NewMailManager()
 	pObj.pEventManager = vgevent.NewEventManager()
 
 	return pObj
@@ -78,9 +80,9 @@ func (gm *GameManager) GetPlayerManager() iplayer.IPlayerManager {
 	return gm.arrModule[Module_Player].(iplayer.IPlayerManager)
 }
 
-// func (gm *GameManager) GetMailManager() pub_mail.IMailManager {
-// 	return gm.arrModule[Module_Mail].(pub_mail.IMailManager)
-// }
+func (gm *GameManager) GetMailManager() imail.IMailManager {
+	return gm.arrModule[Module_Mail].(imail.IMailManager)
+}
 
 func (gm *GameManager) GetCustomLanguageManager() icuslan.ICustomLanguageManager {
 	return gm.arrModule[Module_CustomLanguage].(icuslan.ICustomLanguageManager)

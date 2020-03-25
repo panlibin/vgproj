@@ -100,12 +100,12 @@ func (g *GameServerManager) ModifyServer(serverId int32, name string, status int
 
 func (g *GameServerManager) insertServer(pGameServer *igame.GameServer) {
 	const strInsertSql = "insert into server_list values(?,?,?,?)"
-	public.Server.GetDataDb().AsyncExec(nil, g.getDbIdx(), strInsertSql, pGameServer.ServerId, pGameServer.Name, pGameServer.Status, pGameServer.Addr)
+	public.Server.GetDataDb().AsyncExec(nil, nil, g.getDbIdx(), strInsertSql, pGameServer.ServerId, pGameServer.Name, pGameServer.Status, pGameServer.Addr)
 }
 
 func (g *GameServerManager) updateServer(pGameServer *igame.GameServer) {
 	const strUpdateSql = "update server_list set name=?,status=?,addr=? where server_id=?"
-	public.Server.GetDataDb().AsyncExec(nil, g.getDbIdx(), strUpdateSql, pGameServer.Name, pGameServer.Status, pGameServer.Addr, pGameServer.ServerId)
+	public.Server.GetDataDb().AsyncExec(nil, nil, g.getDbIdx(), strUpdateSql, pGameServer.Name, pGameServer.Status, pGameServer.Addr, pGameServer.ServerId)
 }
 
 func (g *GameServerManager) getDbIdx() uint32 {
