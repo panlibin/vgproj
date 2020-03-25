@@ -3,3 +3,6 @@ __debug_bin
 /vglogin/log
 /dummycli/log
 /vggame/log
+/vgmaster/vgmaster
+/vglogin/vglogin
+/vggame/vggame

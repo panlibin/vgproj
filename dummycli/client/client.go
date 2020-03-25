@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	ec "vgproj/common/define/err_code"
 	"vgproj/common/util"
@@ -30,6 +31,7 @@ import (
 var msgDesc *util.MessageDescriptor
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	msgDesc = util.NewMessageDescriptor()
 	msgDesc.Register(&msg.C2S_Login{})
 	msgDesc.Register(&msg.S2C_Login{})
@@ -318,8 +320,7 @@ func (c *Client) DoRead(r io.Reader) error {
 	msgId := binary.BigEndian.Uint32(msgBuf[:4])
 	msgType, exist := msgDesc.GetMessageType(msgId)
 	if !exist {
-		logger.Errorf("receive unregister message id = %v", msgId)
-		return errors.New("receive unregister message")
+		return nil
 	}
 	msg := reflect.New(msgType).Interface().(proto.Message)
 	err = proto.Unmarshal(msgBuf[4:], msg)

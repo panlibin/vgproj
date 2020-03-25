@@ -10,7 +10,6 @@ import (
 	"vgproj/proto/loginrpc"
 	"vgproj/vglogin/public"
 
-	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo/util/vgtime"
 	"google.golang.org/grpc"
 )
@@ -34,10 +33,22 @@ func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*gl
 }
 
 // NotifyLogout 处理角色下线
-func (s *Server) PlayerLogout(context.Context, *loginrpc.NotifyLogout) (*globalrpc.Nop, error) {
-	logger.Debug("NotifyLogout")
+func (s *Server) PlayerLogout(ctx context.Context, req *loginrpc.NotifyLogout) (rsp *globalrpc.Nop, err error) {
+	rsp = &globalrpc.Nop{}
+	pAccount := public.Server.GetAccountManager().GetAccount(req.AccountId)
+	if pAccount == nil {
+		return
+	}
+	if pAccount.Lock() != nil {
+		return
+	}
+	defer pAccount.Unlock()
+	pAccount.Logout(req.Rnd)
+	if req.PlayerId > 0 {
+		pAccount.SetCharacter(req.PlayerId, req.ServerId, req.Name, req.Combat)
+	}
 
-	return &globalrpc.Nop{}, nil
+	return
 }
 
 func (s *Server) Login(ctx context.Context, req *loginrpc.ReqLogin) (rsp *loginrpc.RspLogin, err error) {

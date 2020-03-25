@@ -33,13 +33,13 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	tm := time.Now()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		for j := 0; j < 10; j++ {
 			pClient := client.NewClient(iaccount.LoginTypeCustom, fmt.Sprintf("test%04d", i*10+j), "ababcc", &wg)
-			//pClient := client.NewClient(account.LoginType_Custom, "test0000", "ababcc", &wg)
+			// pClient := client.NewClient(iaccount.LoginTypeCustom, "test0115", "ababcc", &wg)
 			go pClient.Run()
 		}
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 200)
 	}
 
 	wg.Wait()

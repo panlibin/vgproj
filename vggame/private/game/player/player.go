@@ -1,7 +1,10 @@
 package player
 
 import (
+	"context"
 	"database/sql"
+	"vgproj/common/cluster"
+	"vgproj/proto/loginrpc"
 	"vgproj/proto/msg"
 	"vgproj/vggame/public"
 	iconfig "vgproj/vggame/public/config"
@@ -31,6 +34,7 @@ type loadContext struct {
 
 type Player struct {
 	playerId      int64
+	rnd           uint64
 	arrModule     [iplayer.PlayerModule_Count]iPlayerModule
 	status        EPlayerStatus
 	conn          igate.IConnection
@@ -145,6 +149,7 @@ func (p *Player) Login(conn igate.IConnection) {
 	}
 	p.DailyRefresh(vgtime.GetDayZeroTs(vgtime.Now()))
 	p.status = EPlayerStatus_Online
+	p.rnd = conn.GetRnd()
 	p.conn = conn
 	for _, pModule := range p.arrModule {
 		pModule.onLogin()
@@ -152,6 +157,7 @@ func (p *Player) Login(conn igate.IConnection) {
 	pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
 	pPlayerManager.SetPlayerOnline(p.playerId)
 
+	logger.Debugf("player login id %d", p.playerId)
 	p.SendMessage(&msg.S2C_LoginFinish{})
 }
 
@@ -163,9 +169,33 @@ func (p *Player) Logout() {
 	for _, pModule := range p.arrModule {
 		pModule.onLogout()
 	}
+
+	pDataModule := p.GetModule(iplayer.PlayerModule_Data).(*dataModule)
+	accountId := pDataModule.accountId
+	serverId := pDataModule.serverId
+	playerId := p.playerId
+	name := pDataModule.name
+	rnd := p.rnd
+
 	p.conn = nil
 	pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
 	pPlayerManager.SetPlayerOffline(p.playerId)
+	logger.Debugf("player logout id %d", p.playerId)
+
+	public.Server.AsyncTask(func([]interface{}) {
+		pNode := public.Server.GetCluster().GetNode(cluster.NodeLogin, 1)
+		if pNode != nil {
+			pLoginNode := pNode.(*cluster.LoginNode)
+			pLoginNode.PlayerLogout(context.Background(), &loginrpc.NotifyLogout{
+				AccountId: accountId,
+				ServerId:  serverId,
+				Rnd:       rnd,
+				PlayerId:  playerId,
+				Name:      name,
+				Combat:    0,
+			})
+		}
+	})
 }
 
 func (p *Player) Release() {

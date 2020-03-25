@@ -43,6 +43,7 @@ type Connection struct {
 	msgReceiver  interface{}
 	accountId    int64
 	serverId     int32
+	rnd          uint64
 	status       ConnectionStatus
 }
 
@@ -102,10 +103,28 @@ func (c *Connection) DoWrite(w io.Writer, m interface{}) error {
 }
 
 func (c *Connection) OnClose(err error) {
-	if err != nil {
-		logger.Debugf("connection closed: ", err)
+	c.status = ConnectionStatus_Closed
+	if c.accountId > 0 {
+		c.g.RemoveAccountSession(c.accountId)
 	}
+	c.g.OnConnectionClose(c.connectionId)
 
+	if c.pPlayer != nil {
+		public.Server.SyncTask(func([]interface{}) {
+			c.pPlayer.Logout()
+			c.pPlayer = nil
+		})
+	} else if c.accountId > 0 {
+		pNode := public.Server.GetCluster().GetNode(cluster.NodeLogin, 1)
+		if pNode != nil {
+			pLoginNode := pNode.(*cluster.LoginNode)
+			pLoginNode.PlayerLogout(context.Background(), &loginrpc.NotifyLogout{
+				AccountId: c.accountId,
+				ServerId:  c.serverId,
+				Rnd:       c.rnd,
+			})
+		}
+	}
 }
 
 func (c *Connection) Close(err error) {
@@ -122,6 +141,10 @@ func (c *Connection) LocalAddr() net.Addr {
 
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
+}
+
+func (c *Connection) GetRnd() uint64 {
+	return c.rnd
 }
 
 func (c *Connection) handleLogin(pMsgReq *msg.C2S_Login) {
@@ -184,6 +207,7 @@ func (c *Connection) loginCheckCallback(args []interface{}) {
 		// 账号验证通过
 		c.accountId = pMsgReq.AccountId
 		c.serverId = pMsgReq.ServerId
+		c.rnd = rspLogin.Rnd
 		c.g.AddAccountSession(c)
 		// 获取角色id
 		pPlayerManager := public.Server.GetGameManager().GetPlayerManager()

@@ -165,6 +165,8 @@ func (s *Server) OnRelease() {
 	if s.pDataDb != nil {
 		s.pDataDb.Close()
 	}
+
+	logger.DefaultLogger.Flush()
 }
 
 func (s *Server) GetAccountManager() iaccount.IAccountManager {

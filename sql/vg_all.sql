@@ -289,6 +289,7 @@ CREATE TABLE  `log_create_character`(
     `server_id` int(11) NOT NULL,
     `name` char(64) NOT NULL,
     `head` int(11) NOT NULL,
+    `sex` int(11) NOT NULL,
     `time` datetime NOT NULL,
     PRIMARY KEY (`id`),
     INDEX `player_id`(`player_id`),

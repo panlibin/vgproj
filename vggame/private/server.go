@@ -230,6 +230,8 @@ func (s *Server) OnRelease() {
 	if s.pConfDb != nil {
 		s.pConfDb.Close()
 	}
+
+	logger.DefaultLogger.Flush()
 }
 
 func (s *Server) GetServerId() int32 {

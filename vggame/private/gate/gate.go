@@ -73,7 +73,7 @@ func (g *Gate) OnNewConnection(conn network.Connection) {
 	g.connMtx.Unlock()
 
 	conn.Accept(pConnection)
-	logger.Debugf("new connection from %v, connectionId = %v", conn.RemoteAddr(), connectionId)
+	// logger.Debugf("new connection from %v, connectionId = %v", conn.RemoteAddr(), connectionId)
 }
 
 func (g *Gate) OnConnectionClose(connectionId uint32) {
@@ -81,7 +81,7 @@ func (g *Gate) OnConnectionClose(connectionId uint32) {
 	delete(g.mapConnection, connectionId)
 	g.connMtx.Unlock()
 
-	logger.Debugf("connection closed. remove connectionId = %v", connectionId)
+	// logger.Debugf("connection closed. remove connectionId = %v", connectionId)
 }
 
 func (g *Gate) AddAccountSession(pConn *Connection) {

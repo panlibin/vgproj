@@ -82,7 +82,11 @@ func (pm *PlayerManager) OnInit() error {
 }
 
 func (pm *PlayerManager) OnRelease() {
-
+	for _, pPlayer := range pm.mapPlayer {
+		if pPlayer != nil {
+			pPlayer.Logout()
+		}
+	}
 }
 
 func (pm *PlayerManager) CreatePlayer(accountId int64, serverId int32, name string, head int32, ctx interface{}, cb func(ctx interface{}, pPlayer iplayer.IPlayer, errCode int32)) {
