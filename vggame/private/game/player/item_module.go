@@ -155,8 +155,7 @@ func (im *itemModule) SubItems(mapItems map[int32]int64, source int32, sourceExt
 	return true
 }
 
-func (im *itemModule) handleGetRoleItems(args []interface{}) {
-	//pMsgReq := args[0].(*msg.C2S_ROLE_ITEMS)
+func (im *itemModule) handleGetRoleItems(pMsgReq *msg.C2S_ROLE_ITEMS) {
 	pMsgRsp := new(msg.S2C_ROLE_ITEMS)
 
 	pMsgRsp.Items = make([]*msg.ROLE_ITEM, 0, len(im.mapItem))

@@ -2,6 +2,8 @@ package client
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -46,6 +48,7 @@ type Client struct {
 	password    string
 	accountId   int64
 	token       string
+	ts          int64
 	status      int32
 	gsAddr      string
 	pWg         *sync.WaitGroup
@@ -57,12 +60,17 @@ type Client struct {
 	waitMsgId   uint32
 }
 
-func NewClient(loginType int32, accountName string, password string, pWg *sync.WaitGroup) *Client {
+func NewClient(accountId int64, pWg *sync.WaitGroup) *Client {
 	pObj := new(Client)
-	pObj.loginType = loginType
-	pObj.accountName = accountName
-	pObj.password = password
-	pObj.status = ClientStatus_LoginAccount
+	// pObj.loginType = loginType
+	// pObj.accountName = accountName
+	// pObj.password = password
+	pObj.accountId = accountId
+	pObj.ts = vgtime.Now()
+	token := sha256.Sum256([]byte(fmt.Sprintf("ts=%d&auth_key=%s&account_id=%d", pObj.ts, GlobalConfig.AuthKey, accountId)))
+	pObj.token = base64.URLEncoding.EncodeToString(token[:])
+	pObj.gsAddr = GlobalConfig.GameServerAddr
+	pObj.status = ClientStatus_LoginGame
 	pObj.pWg = pWg
 	pObj.waitChan = make(chan proto.Message)
 	pWg.Add(1)
@@ -76,6 +84,26 @@ func NewClient(loginType int32, accountName string, password string, pWg *sync.W
 
 	return pObj
 }
+
+// func NewClient(loginType int32, accountName string, password string, pWg *sync.WaitGroup) *Client {
+// 	pObj := new(Client)
+// 	pObj.loginType = loginType
+// 	pObj.accountName = accountName
+// 	pObj.password = password
+// 	pObj.status = ClientStatus_LoginAccount
+// 	pObj.pWg = pWg
+// 	pObj.waitChan = make(chan proto.Message)
+// 	pWg.Add(1)
+
+// 	pObj.arrBehavior = make([]func(), ClientStatus_Count)
+// 	pObj.arrBehavior[ClientStatus_LoginAccount] = pObj.LoginAccount
+// 	pObj.arrBehavior[ClientStatus_RegisterAccount] = pObj.RegisterAccount
+// 	pObj.arrBehavior[ClientStatus_GetServerInfo] = pObj.GetServerInfo
+// 	pObj.arrBehavior[ClientStatus_LoginGame] = pObj.LoginGame
+// 	pObj.arrBehavior[ClientStatus_CreateCharacter] = pObj.CreateCharacter
+
+// 	return pObj
+// }
 
 func (c *Client) Run() {
 	for {
@@ -110,6 +138,7 @@ type LoginAccountRsp struct {
 	Code      int32  `json:"code"`
 	AccountId int64  `json:"account_id"`
 	Token     string `json:"token"`
+	Ts        int64  `json:"ts"`
 }
 
 func (c *Client) LoginAccount() {
@@ -144,6 +173,7 @@ func (c *Client) LoginAccount() {
 	} else if rsp.Code == ec.Success {
 		c.accountId = rsp.AccountId
 		c.token = rsp.Token
+		c.ts = rsp.Ts
 		logger.Debugf("%s: login account suc", c.accountName)
 		c.SetStatus(ClientStatus_GetServerInfo)
 	} else {
@@ -204,9 +234,7 @@ type ServerInfoRsp struct {
 }
 
 func (c *Client) GetServerInfo() {
-	curTs := vgtime.Now()
-	sign := c.calcSign([]string{strconv.FormatInt(curTs, 10)})
-	resp, err := http.Get(fmt.Sprintf("%s/server_list?&time=%d&sign=%s", GlobalConfig.LoginServerAddr, curTs, sign))
+	resp, err := http.Get(fmt.Sprintf("%s/server_list", GlobalConfig.LoginServerAddr))
 	if err != nil {
 		logger.Error(err)
 		c.SetStatus(ClientStatus_Close)
@@ -262,6 +290,7 @@ func (c *Client) LoginGame() {
 	pMsgReq.AccountId = c.accountId
 	pMsgReq.Token = c.token
 	pMsgReq.ServerId = 1
+	pMsgReq.Ts = c.ts
 	c.Write(pMsgReq)
 	pMsgRsp := c.WaitResponse(&msg.S2C_Login{}).(*msg.S2C_Login)
 	if pMsgRsp.Code != ec.Success {

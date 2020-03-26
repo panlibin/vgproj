@@ -3,18 +3,17 @@ package player
 import (
 	"vgproj/common/util"
 	"vgproj/proto/msg"
-	"vgproj/vggame/public"
 	iplayer "vgproj/vggame/public/game/player"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type messageRouter struct {
-	mapHandler map[uint32]func([]interface{})
+	mapHandler map[uint32]func(*Player, proto.Message)
 }
 
 func (mr *messageRouter) init(msgDesc *util.MessageDescriptor) {
-	mr.mapHandler = map[uint32]func([]interface{}){
+	mr.mapHandler = map[uint32]func(*Player, proto.Message){
 		msgDesc.Register(&msg.C2S_ROLE_ITEMS{}): handleGetRoleItems,
 	}
 }
@@ -24,11 +23,9 @@ func (mr *messageRouter) Route(msgId uint32, receiver interface{}, msg proto.Mes
 	if !exist {
 		return
 	}
-	public.Server.SyncTask(f, receiver, msg)
+	f(receiver.(*Player), msg)
 }
 
-func handleGetRoleItems(args []interface{}) {
-	p := args[0].(*Player)
-	// m := args[1].(*msg.C2S_ROLE_ITEMS)
-	p.GetModule(iplayer.PlayerModule_Item)
+func handleGetRoleItems(p *Player, m proto.Message) {
+	p.GetModule(iplayer.PlayerModule_Item).(*itemModule).handleGetRoleItems(m.(*msg.C2S_ROLE_ITEMS))
 }

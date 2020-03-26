@@ -149,7 +149,6 @@ func (p *Player) Login(conn igate.IConnection) {
 	}
 	p.DailyRefresh(vgtime.GetDayZeroTs(vgtime.Now()))
 	p.status = EPlayerStatus_Online
-	p.rnd = conn.GetRnd()
 	p.conn = conn
 	for _, pModule := range p.arrModule {
 		pModule.onLogin()
@@ -175,7 +174,6 @@ func (p *Player) Logout() {
 	serverId := pDataModule.serverId
 	playerId := p.playerId
 	name := pDataModule.name
-	rnd := p.rnd
 
 	p.conn = nil
 	pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
@@ -189,7 +187,6 @@ func (p *Player) Logout() {
 			pLoginNode.PlayerLogout(context.Background(), &loginrpc.NotifyLogout{
 				AccountId: accountId,
 				ServerId:  serverId,
-				Rnd:       rnd,
 				PlayerId:  playerId,
 				Name:      name,
 				Combat:    0,

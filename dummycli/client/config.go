@@ -2,5 +2,10 @@ package client
 
 var GlobalConfig struct {
 	LoginServerAddr string
-	ClientKey string
+	GameServerAddr  string
+	ClientKey       string
+	Prefix          string
+	Interval        int
+	Count           int
+	AuthKey         string
 }

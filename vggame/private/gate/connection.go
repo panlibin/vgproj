@@ -1,17 +1,17 @@
 package gate
 
 import (
-	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"reflect"
 	"time"
-	"vgproj/common/cluster"
 	ec "vgproj/common/define/err_code"
-	"vgproj/proto/loginrpc"
 	"vgproj/proto/msg"
 	"vgproj/vggame/public"
 	iplayer "vgproj/vggame/public/game/player"
@@ -43,7 +43,6 @@ type Connection struct {
 	msgReceiver  interface{}
 	accountId    int64
 	serverId     int32
-	rnd          uint64
 	status       ConnectionStatus
 }
 
@@ -76,9 +75,16 @@ func (c *Connection) DoRead(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	c.msgRouter.Route(msgId, c.msgReceiver, msg)
+	public.Server.SyncTask(c.dispatch, msgId, msg)
 
 	return err
+}
+
+func (c *Connection) dispatch(args []interface{}) {
+	if c.status == ConnectionStatus_Closed {
+		return
+	}
+	c.msgRouter.Route(args[0].(uint32), c.msgReceiver, args[1].(proto.Message))
 }
 
 func (c *Connection) DoWrite(w io.Writer, m interface{}) error {
@@ -103,32 +109,34 @@ func (c *Connection) DoWrite(w io.Writer, m interface{}) error {
 }
 
 func (c *Connection) OnClose(err error) {
-	c.status = ConnectionStatus_Closed
-	if c.accountId > 0 {
-		c.g.RemoveAccountSession(c.accountId)
-	}
 	c.g.OnConnectionClose(c.connectionId)
-
-	if c.pPlayer != nil {
-		public.Server.SyncTask(func([]interface{}) {
-			c.pPlayer.Logout()
-			c.pPlayer = nil
-		})
-	} else if c.accountId > 0 {
-		pNode := public.Server.GetCluster().GetNode(cluster.NodeLogin, 1)
-		if pNode != nil {
-			pLoginNode := pNode.(*cluster.LoginNode)
-			pLoginNode.PlayerLogout(context.Background(), &loginrpc.NotifyLogout{
-				AccountId: c.accountId,
-				ServerId:  c.serverId,
-				Rnd:       c.rnd,
-			})
-		}
+	if c.status == ConnectionStatus_Closed {
+		return
 	}
+	public.Server.SyncTask(c.doClose)
 }
 
 func (c *Connection) Close(err error) {
+	if c.status == ConnectionStatus_Closed {
+		return
+	}
 	c.conn.Close(err)
+	c.doClose(nil)
+}
+
+func (c *Connection) doClose([]interface{}) {
+	if c.status == ConnectionStatus_Closed {
+		return
+	}
+	c.status = ConnectionStatus_Closed
+
+	if c.accountId > 0 {
+		c.g.RemoveAccountSession(c.accountId)
+	}
+
+	if c.pPlayer != nil {
+		c.pPlayer.Logout()
+	}
 }
 
 func (c *Connection) Write(pMsg proto.Message) {
@@ -143,77 +151,42 @@ func (c *Connection) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
 
-func (c *Connection) GetRnd() uint64 {
-	return c.rnd
-}
-
 func (c *Connection) handleLogin(pMsgReq *msg.C2S_Login) {
 	if c.status != ConnectionStatus_WaitLogin {
 		return
 	}
 	c.status = ConnectionStatus_CheckingAccount
 
+	pMsgRsp := new(msg.S2C_Login)
 	var errCode int32 = ec.Unknown
+	var playerId int64
 	for {
 		if !public.Server.IsSelfServerId(pMsgReq.ServerId) {
 			errCode = ec.InvalidParam
 			break
 		}
 
-		pNode := public.Server.GetCluster().GetNode(cluster.NodeLogin, 1)
-		if pNode == nil {
-			errCode = ec.Unknown
+		t := time.Now()
+		ts := t.Unix()*1000 + int64(t.Nanosecond())/1000000
+		if pMsgReq.Ts+600000 < ts {
+			errCode = ec.InvalidToken
 			break
 		}
 
-		pLoginNode := pNode.(*cluster.LoginNode)
-		public.Server.AsyncTask(func([]interface{}) {
-			rsp, err := pLoginNode.Login(context.Background(), &loginrpc.ReqLogin{AccountId: pMsgReq.AccountId, Token: pMsgReq.Token, ServerId: pMsgReq.ServerId})
-			public.Server.SyncTask(c.loginCheckCallback, rsp, err, pMsgReq)
-		})
-
-		errCode = ec.Success
-		break
-	}
-
-	if errCode != ec.Success {
-		c.Write(&msg.S2C_Login{Code: errCode})
-	}
-}
-
-func (c *Connection) loginCheckCallback(args []interface{}) {
-	if c.status != ConnectionStatus_CheckingAccount {
-		return
-	}
-
-	pMsgRsp := new(msg.S2C_Login)
-	var errCode int32 = ec.Unknown
-	for {
-		if args[0] == nil || args[1] != nil {
-			errCode = ec.Unknown
-			c.status = ConnectionStatus_WaitLogin
-			break
-		}
-
-		pMsgReq := args[2].(*msg.C2S_Login)
-
-		rspLogin := args[0].(*loginrpc.RspLogin)
-		if rspLogin.Code != ec.Success {
-			errCode = rspLogin.Code
-			c.status = ConnectionStatus_WaitLogin
+		token := sha256.Sum256([]byte(fmt.Sprintf("ts=%d&auth_key=%s&account_id=%d", pMsgReq.Ts, public.Server.GetAuthKey(), pMsgReq.AccountId)))
+		if pMsgReq.Token != base64.URLEncoding.EncodeToString(token[:]) {
+			errCode = ec.InvalidToken
 			break
 		}
 
 		// 账号验证通过
 		c.accountId = pMsgReq.AccountId
 		c.serverId = pMsgReq.ServerId
-		c.rnd = rspLogin.Rnd
 		c.g.AddAccountSession(c)
 		// 获取角色id
 		pPlayerManager := public.Server.GetGameManager().GetPlayerManager()
-		playerId := pPlayerManager.GetPlayerIdByAccountId(c.accountId, c.serverId)
-		t := time.Now()
-		pMsgRsp.ServerTime = t.Unix()*1000 + int64(t.Nanosecond())/1000000
+		playerId = pPlayerManager.GetPlayerIdByAccountId(c.accountId, c.serverId)
+		pMsgRsp.ServerTime = ts
 		_, zoneOffset := t.Local().Zone()
 		pMsgRsp.Offset = int32(zoneOffset)
 		pMsgRsp.OpenServerTime = public.Server.GetOpenServerTs()
@@ -232,8 +205,12 @@ func (c *Connection) loginCheckCallback(args []interface{}) {
 		break
 	}
 
-	pMsgRsp.Code = errCode
-	if pMsgRsp.PlayerId == 0 {
+	if errCode != ec.Success {
+		c.status = ConnectionStatus_WaitLogin
+		pMsgRsp.Code = errCode
+		c.Write(pMsgRsp)
+	} else if playerId == 0 {
+		pMsgRsp.Code = errCode
 		c.Write(pMsgRsp)
 	}
 }

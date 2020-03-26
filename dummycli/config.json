@@ -1,4 +1,9 @@
 {
     "LoginServerAddr" : "https://192.168.1.31:8000",
-    "ClientKey" : "vgcli"
+    "GameServerAddr" : "ws://192.168.1.31:9010",
+    "ClientKey" : "vgcli",
+    "Prefix": "test",
+    "Interval": 0,
+    "Count": 1,
+    "AuthKey": "MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk"
 }

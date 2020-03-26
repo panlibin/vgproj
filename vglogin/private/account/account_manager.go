@@ -131,8 +131,6 @@ func (am *AccountManager) Login(loginType int32, name string, password string) (
 		}
 	}
 
-	pAccount.genToken()
-
 	return pAccount, ec.Success
 }
 

@@ -3,13 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
 	"vgproj/dummycli/client"
-	iaccount "vgproj/vglogin/public/account"
 
 	logger "github.com/panlibin/vglog"
 )
@@ -33,15 +31,15 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	tm := time.Now()
-	for i := 0; i < 50; i++ {
-		for j := 0; j < 10; j++ {
-			pClient := client.NewClient(iaccount.LoginTypeCustom, fmt.Sprintf("test%04d", i*10+j), "ababcc", &wg)
-			// pClient := client.NewClient(iaccount.LoginTypeCustom, "test0115", "ababcc", &wg)
-			go pClient.Run()
-		}
-		time.Sleep(time.Millisecond * 200)
+	for i := 0; i < client.GlobalConfig.Count; i++ {
+		// pClient := client.NewClient(iaccount.LoginTypeCustom, fmt.Sprintf("%s%04d", client.GlobalConfig.Prefix, i), "ababcc", &wg)
+		pClient := client.NewClient(10001+int64(i), &wg)
+		// pClient := client.NewClient(iaccount.LoginTypeCustom, "test0115", "ababcc", &wg)
+		go pClient.Run()
 	}
+	time.Sleep(time.Millisecond * time.Duration(client.GlobalConfig.Interval))
 
 	wg.Wait()
 	logger.Debug(time.Now().Sub(tm))
+	logger.DefaultLogger.Flush()
 }

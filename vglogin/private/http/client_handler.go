@@ -1,12 +1,17 @@
 package http
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	ec "vgproj/common/define/err_code"
 	"vgproj/vglogin/public"
 	iaccount "vgproj/vglogin/public/account"
+
+	"github.com/panlibin/virgo/util/vgtime"
 )
 
 func handleRegister(w http.ResponseWriter, pReq *http.Request) {
@@ -95,8 +100,10 @@ func handleLogin(w http.ResponseWriter, pReq *http.Request) {
 				rsp["ban_ts"] = pAccount.GetBanTs()
 			} else {
 				rsp["account_id"] = pAccount.GetId()
-				rsp["token"] = pAccount.GetToken()
-				rsp["expire_ts"] = pAccount.GetTokenExpireTs()
+				curTs := vgtime.Now()
+				token := sha256.Sum256([]byte(fmt.Sprintf("ts=%d&auth_key=%s&account_id=%d", curTs, public.Server.GetAuthKey(), pAccount.GetId())))
+				rsp["token"] = base64.URLEncoding.EncodeToString(token[:])
+				rsp["ts"] = curTs
 				mapCharacter := pAccount.GetCharacters()
 				cList := make(map[int32]interface{}, len(mapCharacter))
 				for serverId, pCharacter := range mapCharacter {
@@ -126,23 +133,23 @@ func handleServerList(w http.ResponseWriter, pReq *http.Request) {
 	rsp := make(map[string]interface{}, 8)
 
 	for {
-		strTime := pReq.FormValue("time")
-		strSign := pReq.FormValue("sign")
+		// strTime := pReq.FormValue("time")
+		// strSign := pReq.FormValue("sign")
 
-		reqTime, err := strconv.ParseInt(strTime, 10, 64)
-		if err != nil {
-			errCode = ec.InvalidParam
-			break
-		}
-		if !checkTime(reqTime) {
-			errCode = ec.RequestTimeout
-			break
-		}
+		// reqTime, err := strconv.ParseInt(strTime, 10, 64)
+		// if err != nil {
+		// 	errCode = ec.InvalidParam
+		// 	break
+		// }
+		// if !checkTime(reqTime) {
+		// 	errCode = ec.RequestTimeout
+		// 	break
+		// }
 
-		if !checkSign([]string{strTime}, public.Server.GetClientKey(), strSign) {
-			errCode = ec.InvalidSign
-			break
-		}
+		// if !checkSign([]string{strTime}, public.Server.GetClientKey(), strSign) {
+		// 	errCode = ec.InvalidSign
+		// 	break
+		// }
 
 		pGameServerManager := public.Server.GetGameServerManager()
 		mapServer := pGameServerManager.GrabServerList()

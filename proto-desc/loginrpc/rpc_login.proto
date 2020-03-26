@@ -10,5 +10,5 @@ service Login {
     rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
 
     rpc PlayerLogout(NotifyLogout) returns(globalrpc.nop);
-    rpc Login(ReqLogin) returns(RspLogin);
+    // rpc Login(ReqLogin) returns(RspLogin);
 }

@@ -3,17 +3,16 @@ package gate
 import (
 	"vgproj/common/util"
 	"vgproj/proto/msg"
-	"vgproj/vggame/public"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type messageRouter struct {
-	mapHandler map[uint32]func([]interface{})
+	mapHandler map[uint32]func(*Connection, proto.Message)
 }
 
 func (mr *messageRouter) init(msgDesc *util.MessageDescriptor) {
-	mr.mapHandler = map[uint32]func([]interface{}){
+	mr.mapHandler = map[uint32]func(*Connection, proto.Message){
 		msgDesc.Register(&msg.C2S_Login{}):           handleLogin,
 		msgDesc.Register(&msg.C2S_CreateCharacter{}): handleCreateCharacter,
 	}
@@ -24,17 +23,13 @@ func (mr *messageRouter) Route(msgId uint32, receiver interface{}, msg proto.Mes
 	if !exist {
 		return
 	}
-	public.Server.SyncTask(f, receiver, msg)
+	f(receiver.(*Connection), msg)
 }
 
-func handleLogin(args []interface{}) {
-	c := args[0].(*Connection)
-	m := args[1].(*msg.C2S_Login)
-	c.handleLogin(m)
+func handleLogin(c *Connection, m proto.Message) {
+	c.handleLogin(m.(*msg.C2S_Login))
 }
 
-func handleCreateCharacter(args []interface{}) {
-	c := args[0].(*Connection)
-	m := args[1].(*msg.C2S_CreateCharacter)
-	c.handleCreateCharacter(m)
+func handleCreateCharacter(c *Connection, m proto.Message) {
+	c.handleCreateCharacter(m.(*msg.C2S_CreateCharacter))
 }

@@ -14,7 +14,6 @@ import (
 type Gate struct {
 	listener          *websocket.Listener
 	connMtx           sync.Mutex
-	acntMtx           sync.Mutex
 	maxConnectionId   uint32
 	mapConnection     map[uint32]*Connection
 	mapAccountSession map[int64]*Connection
@@ -85,26 +84,19 @@ func (g *Gate) OnConnectionClose(connectionId uint32) {
 }
 
 func (g *Gate) AddAccountSession(pConn *Connection) {
-	g.acntMtx.Lock()
 	pOldConn, exist := g.mapAccountSession[pConn.accountId]
 	if exist {
 		pOldConn.Write(&msg.S2C_Disconnect{Code: ec.LoginOnOtherTerminal})
 		pOldConn.Close(nil)
 	}
 	g.mapAccountSession[pConn.accountId] = pConn
-	g.acntMtx.Unlock()
 }
 
 func (g *Gate) RemoveAccountSession(accountId int64) {
-	g.acntMtx.Lock()
 	delete(g.mapAccountSession, accountId)
-	g.acntMtx.Unlock()
 }
 
 func (g *Gate) Kick(accountId int64) bool {
-	g.acntMtx.Lock()
-	defer g.acntMtx.Unlock()
-
 	pConn, exist := g.mapAccountSession[accountId]
 	if exist {
 		pConn.Write(&msg.S2C_Disconnect{Code: ec.LoginOnOtherTerminal})

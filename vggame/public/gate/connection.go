@@ -11,5 +11,4 @@ type IConnection interface {
 	Write(proto.Message)
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
-	GetRnd() uint64
 }

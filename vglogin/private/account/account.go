@@ -3,8 +3,6 @@ package account
 import (
 	"database/sql"
 	"fmt"
-	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 	"vgproj/vglogin/public"
@@ -15,21 +13,17 @@ import (
 )
 
 type Account struct {
-	id            int64
-	password      string
-	createTime    time.Time
-	isBan         int32
-	banTs         int64
-	banType       int32
-	banDuration   int64
-	mapName       map[int32]*Name
-	token         string
-	tokenExpireTs int64
-	rnd           uint64
-	mapCharacter  map[int32]iaccount.ICharacter
-	onlineServer  int32
-	mtx           sync.Mutex
-	lastErr       error
+	id           int64
+	password     string
+	createTime   time.Time
+	isBan        int32
+	banTs        int64
+	banType      int32
+	banDuration  int64
+	mapName      map[int32]*Name
+	mapCharacter map[int32]iaccount.ICharacter
+	mtx          sync.Mutex
+	lastErr      error
 }
 
 func NewAccount(accountId int64) *Account {
@@ -37,7 +31,6 @@ func NewAccount(accountId int64) *Account {
 	pObj.id = accountId
 	pObj.mapName = make(map[int32]*Name)
 	pObj.mapCharacter = make(map[int32]iaccount.ICharacter)
-	pObj.onlineServer = -1
 	return pObj
 }
 
@@ -56,14 +49,6 @@ func (a *Account) Unlock() {
 
 func (a *Account) GetId() int64 {
 	return a.id
-}
-
-func (a *Account) GetToken() string {
-	return a.token
-}
-
-func (a *Account) GetTokenExpireTs() int64 {
-	return a.tokenExpireTs
 }
 
 func (a *Account) IsBan() bool {
@@ -101,32 +86,6 @@ func (a *Account) Ban(banType int32, banDuration int64) {
 	a.banDuration = banDuration
 	a.banTs = vgtime.Now()
 	a.updateBanInfo()
-	a.tokenExpireTs = 0
-}
-
-func (a *Account) GetRnd() uint64 {
-	return a.rnd
-}
-
-func (a *Account) GenRnd() {
-	a.rnd = rand.Uint64()
-}
-
-func (a *Account) GetOnlineServer() int32 {
-	return a.onlineServer
-}
-
-func (a *Account) Login(serverId int32) {
-	a.onlineServer = serverId
-	a.updateOnlineServer()
-}
-
-func (a *Account) Logout(rnd uint64) {
-	if a.rnd != rnd {
-		return
-	}
-	a.onlineServer = -1
-	a.updateOnlineServer()
 }
 
 func (a *Account) SetCharacter(playerId int64, serverId int32, name string, combat int64) {
@@ -155,7 +114,7 @@ func (a *Account) GetCharacters() map[int32]iaccount.ICharacter {
 }
 
 func (a *Account) loadData() error {
-	rows, err := public.Server.GetDataDb().Query(uint32(a.id), fmt.Sprintf("select `password`,create_time,is_ban,ban_ts,ban_type,ban_duration,online_server from account_info where account_id=%d;"+
+	rows, err := public.Server.GetDataDb().Query(uint32(a.id), fmt.Sprintf("select `password`,create_time,is_ban,ban_ts,ban_type,ban_duration from account_info where account_id=%d;"+
 		"select login_type,account_name,create_time from account_name where account_id=%d;select player_id,server_id,name,combat from character_info where account_id=%d", a.id, a.id, a.id))
 
 	if err != nil {
@@ -172,7 +131,7 @@ func (a *Account) loadData() error {
 			break
 		}
 
-		if err = rows.Scan(&a.password, &a.createTime, &a.isBan, &a.banTs, &a.banType, &a.banDuration, &a.onlineServer); err != nil {
+		if err = rows.Scan(&a.password, &a.createTime, &a.isBan, &a.banTs, &a.banType, &a.banDuration); err != nil {
 			break
 		}
 
@@ -233,7 +192,7 @@ func (a *Account) loadData() error {
 
 func (a *Account) insert() error {
 	_, err := public.Server.GetDataDb().Exec(uint32(a.id), "insert into account_info(account_id,`password`,create_time,online_server) values(?,?,?,?)",
-		a.id, a.password, a.createTime, a.onlineServer)
+		a.id, a.password, a.createTime, 0)
 	if err != nil {
 		logger.Error(err)
 		a.lastErr = err
@@ -251,20 +210,10 @@ func (a *Account) updateBanInfo() {
 		a.isBan, a.banTs, a.banType, a.banDuration, a.id)
 }
 
-func (a *Account) updateOnlineServer() {
-	const strUpdateSql = "update account_info set online_server=? where account_id=?"
-	public.Server.GetDataDb().Exec(uint32(a.id), strUpdateSql, a.onlineServer, a.id)
-}
-
 func (a *Account) addName(pName *Name) {
 	if _, exist := a.mapName[pName.loginType]; exist {
 		logger.Errorf("duplicate account name. id: %d, login type: %d, name: %s", a.id, pName.loginType, pName.name)
 		return
 	}
 	a.mapName[pName.loginType] = pName
-}
-
-func (a *Account) genToken() {
-	a.token = strconv.FormatUint(rand.Uint64(), 16)
-	a.tokenExpireTs = vgtime.Now() + 3600000*8
 }
