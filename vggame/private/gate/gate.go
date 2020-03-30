@@ -1,18 +1,21 @@
 package gate
 
 import (
+	"fmt"
 	"sync"
 	ec "vgproj/common/define/err_code"
 	"vgproj/common/util"
 	"vgproj/proto/msg"
+	"vgproj/vggame/private/gate/ws"
+	wsutil "vgproj/vggame/private/gate/ws/util"
 
+	"github.com/panlibin/gnet"
 	logger "github.com/panlibin/vglog"
-	network "github.com/panlibin/vgnet"
-	"github.com/panlibin/vgnet/websocket"
 )
 
 type Gate struct {
-	listener          *websocket.Listener
+	*gnet.EventServer
+	listener          *gnet.GServer
 	connMtx           sync.Mutex
 	maxConnectionId   uint32
 	mapConnection     map[uint32]*Connection
@@ -28,6 +31,7 @@ func NewGate(msgDesc *util.MessageDescriptor) *Gate {
 	pObj.msgDesc = msgDesc
 	pObj.msgRouter = &messageRouter{}
 	pObj.msgRouter.init(msgDesc)
+	pObj.EventServer = &gnet.EventServer{}
 
 	return pObj
 }
@@ -35,12 +39,12 @@ func NewGate(msgDesc *util.MessageDescriptor) *Gate {
 func (g *Gate) Start(addr string) error {
 	logger.Info("start gate")
 
-	g.listener = &websocket.Listener{
-		Addr:            addr,
-		NewConnCallback: g.OnNewConnection,
-	}
+	g.listener = &gnet.GServer{}
 
-	err := g.listener.Start()
+	pCodec := &WsCodec{g: g}
+	pCusLog := &CustomLogger{Logger: &logger.DefaultLogger}
+
+	err := g.listener.Serve(g, fmt.Sprintf("tcp://%s", addr), gnet.WithMulticore(true), gnet.WithCodec(pCodec), gnet.WithLogger(pCusLog))
 	if err != nil {
 		logger.Errorf("start gate error: %v", err)
 	} else {
@@ -53,7 +57,10 @@ func (g *Gate) Start(addr string) error {
 func (g *Gate) Stop() {
 	logger.Info("stop gate")
 
-	g.listener.Stop()
+	if g.listener != nil {
+		g.listener.SignalShutdown()
+		g.listener.WaitShutdown()
+	}
 
 	g.connMtx.Lock()
 	for _, pConnection := range g.mapConnection {
@@ -64,14 +71,14 @@ func (g *Gate) Stop() {
 	logger.Info("stop gate finish")
 }
 
-func (g *Gate) OnNewConnection(conn network.Connection) {
+func (g *Gate) OnNewConnection(conn gnet.Conn) *Connection {
 	g.connMtx.Lock()
 	connectionId := g.GenConnectionId()
 	pConnection := NewConnection(g, connectionId, conn)
 	g.mapConnection[connectionId] = pConnection
 	g.connMtx.Unlock()
 
-	conn.Accept(pConnection)
+	return pConnection
 	// logger.Debugf("new connection from %v, connectionId = %v", conn.RemoteAddr(), connectionId)
 }
 
@@ -111,4 +118,49 @@ func (g *Gate) Kick(accountId int64) bool {
 func (g *Gate) GenConnectionId() uint32 {
 	g.maxConnectionId++
 	return g.maxConnectionId
+}
+
+func (g *Gate) OnClosed(c gnet.Conn, err error) (action gnet.Action) {
+	ctx := c.Context()
+	if ctx == nil {
+		return
+	}
+	ctx.(*Connection).OnClose(err)
+	return
+}
+
+func (g *Gate) React(frame []byte, c gnet.Conn) (out []byte, action gnet.Action) {
+	ctx := c.Context()
+	if ctx == nil {
+		return
+	}
+	pConnection := ctx.(*Connection)
+
+	if pConnection.wantType == wantClose {
+		action = gnet.Close
+		return
+	}
+
+	if !pConnection.upgraded {
+		pConnection.upgraded = true
+		out = frame
+		return
+	}
+
+	switch pConnection.header.OpCode {
+	case ws.OpBinary:
+		err := pConnection.handleMessage(frame)
+		if err != nil {
+			action = gnet.Close
+		}
+	case ws.OpClose:
+		out, _ = wsutil.HandleClose(pConnection.header, frame)
+		action = gnet.Close
+	case ws.OpPing:
+		out, _ = wsutil.HandlePing(frame)
+	case ws.OpPong:
+		out, _ = wsutil.HandlePong(frame)
+	}
+
+	return
 }

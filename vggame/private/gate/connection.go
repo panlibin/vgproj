@@ -7,19 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"reflect"
 	"time"
 	ec "vgproj/common/define/err_code"
 	"vgproj/proto/msg"
+	"vgproj/vggame/private/gate/ws"
+	"vgproj/vggame/private/gate/ws/util"
 	"vgproj/vggame/public"
 	iplayer "vgproj/vggame/public/game/player"
 	igate "vgproj/vggame/public/gate"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/panlibin/gnet"
 	logger "github.com/panlibin/vglog"
-	network "github.com/panlibin/vgnet"
 )
 
 type ConnectionStatus int32
@@ -37,16 +38,20 @@ const (
 type Connection struct {
 	g            *Gate
 	connectionId uint32
-	conn         network.Connection
+	conn         gnet.Conn
 	pPlayer      iplayer.IPlayer
 	msgRouter    igate.IMessageRouter
 	msgReceiver  interface{}
 	accountId    int64
 	serverId     int32
 	status       ConnectionStatus
+	wantType     int32
+	wantLen      int
+	header       *ws.Header
+	upgraded     bool
 }
 
-func NewConnection(g *Gate, connectionId uint32, conn network.Connection) *Connection {
+func NewConnection(g *Gate, connectionId uint32, conn gnet.Conn) *Connection {
 	pObj := new(Connection)
 	pObj.conn = conn
 	pObj.g = g
@@ -58,12 +63,7 @@ func NewConnection(g *Gate, connectionId uint32, conn network.Connection) *Conne
 	return pObj
 }
 
-func (c *Connection) DoRead(r io.Reader) error {
-	msgBuf, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
+func (c *Connection) handleMessage(msgBuf []byte) error {
 	msgId := binary.BigEndian.Uint32(msgBuf[:4])
 	msgType, exist := c.g.msgDesc.GetMessageType(msgId)
 	if !exist {
@@ -71,7 +71,7 @@ func (c *Connection) DoRead(r io.Reader) error {
 		return errors.New("receive unregister message")
 	}
 	msg := reflect.New(msgType).Interface().(proto.Message)
-	err = proto.Unmarshal(msgBuf[4:], msg)
+	err := proto.Unmarshal(msgBuf[4:], msg)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,9 @@ func (c *Connection) Close(err error) {
 	if c.status == ConnectionStatus_Closed {
 		return
 	}
-	c.conn.Close(err)
+	out, _ := util.PackCloseData(err.Error())
+	c.conn.AsyncWrite(out)
+	c.conn.Close()
 	c.doClose(nil)
 }
 
@@ -139,8 +141,21 @@ func (c *Connection) doClose([]interface{}) {
 	}
 }
 
-func (c *Connection) Write(pMsg proto.Message) {
-	c.conn.Write(pMsg)
+func (c *Connection) Write(msg proto.Message) {
+	msgId := c.g.msgDesc.GetMessageId(msg)
+	msgBuf, err := proto.Marshal(msg)
+	if err != nil {
+		logger.Warningf("marshal protobuf error, %d: %v", msgId, err)
+		return
+	}
+
+	msgLen := len(msgBuf)
+	writeBuf := make([]byte, msgLen+4)
+	binary.BigEndian.PutUint32(writeBuf, msgId)
+	copy(writeBuf[4:], msgBuf)
+
+	out, _ := ws.FrameToBytes(ws.NewBinaryFrame(writeBuf))
+	c.conn.AsyncWrite(out)
 }
 
 func (c *Connection) LocalAddr() net.Addr {
