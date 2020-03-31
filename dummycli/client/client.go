@@ -60,7 +60,7 @@ type Client struct {
 	waitMsgId   uint32
 }
 
-func NewClient(accountId int64, pWg *sync.WaitGroup) *Client {
+func NewGameClient(accountId int64, pWg *sync.WaitGroup) *Client {
 	pObj := new(Client)
 	// pObj.loginType = loginType
 	// pObj.accountName = accountName
@@ -85,25 +85,25 @@ func NewClient(accountId int64, pWg *sync.WaitGroup) *Client {
 	return pObj
 }
 
-// func NewClient(loginType int32, accountName string, password string, pWg *sync.WaitGroup) *Client {
-// 	pObj := new(Client)
-// 	pObj.loginType = loginType
-// 	pObj.accountName = accountName
-// 	pObj.password = password
-// 	pObj.status = ClientStatus_LoginAccount
-// 	pObj.pWg = pWg
-// 	pObj.waitChan = make(chan proto.Message)
-// 	pWg.Add(1)
+func NewClient(loginType int32, accountName string, password string, pWg *sync.WaitGroup) *Client {
+	pObj := new(Client)
+	pObj.loginType = loginType
+	pObj.accountName = accountName
+	pObj.password = password
+	pObj.status = ClientStatus_LoginAccount
+	pObj.pWg = pWg
+	pObj.waitChan = make(chan proto.Message)
+	pWg.Add(1)
 
-// 	pObj.arrBehavior = make([]func(), ClientStatus_Count)
-// 	pObj.arrBehavior[ClientStatus_LoginAccount] = pObj.LoginAccount
-// 	pObj.arrBehavior[ClientStatus_RegisterAccount] = pObj.RegisterAccount
-// 	pObj.arrBehavior[ClientStatus_GetServerInfo] = pObj.GetServerInfo
-// 	pObj.arrBehavior[ClientStatus_LoginGame] = pObj.LoginGame
-// 	pObj.arrBehavior[ClientStatus_CreateCharacter] = pObj.CreateCharacter
+	pObj.arrBehavior = make([]func(), ClientStatus_Count)
+	pObj.arrBehavior[ClientStatus_LoginAccount] = pObj.LoginAccount
+	pObj.arrBehavior[ClientStatus_RegisterAccount] = pObj.RegisterAccount
+	pObj.arrBehavior[ClientStatus_GetServerInfo] = pObj.GetServerInfo
+	pObj.arrBehavior[ClientStatus_LoginGame] = pObj.LoginGame
+	pObj.arrBehavior[ClientStatus_CreateCharacter] = pObj.CreateCharacter
 
-// 	return pObj
-// }
+	return pObj
+}
 
 func (c *Client) Run() {
 	for {

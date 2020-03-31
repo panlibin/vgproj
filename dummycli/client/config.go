@@ -8,4 +8,5 @@ var GlobalConfig struct {
 	Interval        int
 	Count           int
 	AuthKey         string
+	ClientType      string
 }

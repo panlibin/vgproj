@@ -5,5 +5,6 @@
     "Prefix": "test",
     "Interval": 0,
     "Count": 1,
-    "AuthKey": "MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk"
+    "AuthKey": "MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk",
+    "ClientType": "Game"
 }
