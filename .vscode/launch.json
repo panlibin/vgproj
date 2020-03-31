@@ -26,6 +26,13 @@
             "program": "${workspaceFolder}/vggame"
         },
         {
+            "name": "vgrecharge",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/vgrecharge"
+        },
+        {
             "name": "dummycli",
             "type": "go",
             "request": "launch",

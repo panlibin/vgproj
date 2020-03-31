@@ -1,7 +1,7 @@
 package main
 
 import (
-	"vgproj/vgmaster/private"
+	"vgproj/vgrecharge/private"
 
 	"github.com/panlibin/virgo"
 )

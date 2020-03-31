@@ -122,6 +122,8 @@ func (c *Cluster) AddNode(serverType int32, arrServerId []int32, ip string) {
 		pNode = NewMasterNode(c, serverType, arrServerId, ip, c.authKey)
 	case NodeLogin:
 		pNode = NewLoginNode(c, serverType, arrServerId, ip, c.authKey)
+	case NodeRecharge:
+		pNode = NewRechargeNode(c, serverType, arrServerId, ip, c.authKey)
 	}
 
 	for _, serverId := range arrServerId {

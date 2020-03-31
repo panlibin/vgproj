@@ -1,0 +1,13 @@
+syntax = "proto3";
+package rechargerpc;
+option go_package = "vgproj/proto/rechargerpc";
+
+import "globalrpc/msg_nop.proto";
+import "globalrpc/msg_server_auth.proto";
+import "rechargerpc/msg_recharge.proto";
+
+service Recharge {
+    rpc Auth(globalrpc.NotifyServerAuth) returns(globalrpc.nop);
+
+    rpc CreateOrder(ReqCreateOrder) returns(RspCreateOrder);
+}
