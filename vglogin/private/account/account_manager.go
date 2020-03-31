@@ -3,6 +3,7 @@ package account
 import (
 	"database/sql"
 	"sync"
+	"sync/atomic"
 	"time"
 	ec "vgproj/common/define/err_code"
 	"vgproj/vglogin/public"
@@ -151,8 +152,7 @@ func (am *AccountManager) GetAccount(accountId int64) iaccount.IAccount {
 }
 
 func (am *AccountManager) genAccountId() int64 {
-	am.maxAccountId++
-	return am.maxAccountId
+	return atomic.AddInt64(&am.maxAccountId, 1)
 }
 
 func (am *AccountManager) createAccount(loginType int32, name string, pwd string) (*Account, int32) {
