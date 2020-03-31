@@ -46,7 +46,10 @@ func NewNode(pCluster *Cluster, serverType int32, serverID []int32, ip string, a
 func (n *Node) connect() {
 	var err error
 	for {
-		n.cc, err = grpc.Dial(n.ip, grpc.WithInsecure(), grpc.WithAuthority(n.authKey), grpc.WithBackoffMaxDelay(time.Second*3))
+		ta := &tokenAuth{
+			token: map[string]string{"token": n.authKey},
+		}
+		n.cc, err = grpc.Dial(n.ip, grpc.WithInsecure(), grpc.WithPerRPCCredentials(ta), grpc.WithBackoffMaxDelay(time.Second*3))
 		if err != nil {
 			logger.Errorf("node connect error: %v", err)
 			time.Sleep(time.Second * 3)

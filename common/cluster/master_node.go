@@ -24,7 +24,6 @@ func NewMasterNode(pCluster *Cluster, serverType int32, serverID []int32, ip str
 			ServerId:   pCluster.arrServerID,
 			Ip:         pCluster.ip,
 		},
-		Token: authKey,
 	}
 
 	go func() {

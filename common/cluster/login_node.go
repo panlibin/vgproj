@@ -26,7 +26,6 @@ func NewLoginNode(pCluster *Cluster, serverType int32, serverID []int32, ip stri
 			ServerId:   pCluster.arrServerID,
 			Ip:         pCluster.ip,
 		},
-		Token: authKey,
 	}
 
 	go func() {

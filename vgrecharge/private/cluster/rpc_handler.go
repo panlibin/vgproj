@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"vgproj/proto/globalrpc"
 	"vgproj/proto/rechargerpc"
 	"vgproj/vgrecharge/public"
@@ -20,9 +19,6 @@ func (s *Server) Register(rpcServer *grpc.Server) {
 }
 
 func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*globalrpc.Nop, error) {
-	if req.Token != public.Server.GetAuthKey() {
-		return &globalrpc.Nop{}, errors.New("err token")
-	}
 	public.Server.GetCluster().AddNode(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
 
 	return &globalrpc.Nop{}, nil

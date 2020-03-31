@@ -1,13 +1,18 @@
 package cluster
 
 import (
+	"context"
+	"errors"
 	"net"
 	"sync"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
+
+var ErrInvalidToken = errors.New("invalid token")
 
 // IClusterHandler handler接口
 type IClusterHandler interface {
@@ -38,7 +43,7 @@ func NewCluster(p virgo.IProcedure, serverType int32, arrServerID []int32, ip st
 	pObj.arrServerID = arrServerID
 	pObj.ip = ip
 	pObj.authKey = authKey
-	pObj.rpcServer = grpc.NewServer()
+	pObj.rpcServer = grpc.NewServer(grpc.UnaryInterceptor(pObj.auth))
 	return pObj
 }
 
@@ -140,4 +145,20 @@ func (c *Cluster) AddNode(serverType int32, arrServerId []int32, ip string) {
 	}
 
 	return
+}
+
+func (c *Cluster) auth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		err = ErrInvalidToken
+		logger.Warningf("unauthority node from %v", md[":authority"])
+		return
+	}
+	if token, exist := md["token"]; !exist || token[0] != c.authKey {
+		err = ErrInvalidToken
+		logger.Warningf("unauthority node from %v", md[":authority"])
+		return
+	}
+
+	return handler(ctx, req)
 }

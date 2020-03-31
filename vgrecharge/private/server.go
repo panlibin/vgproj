@@ -75,7 +75,7 @@ func (s *Server) initEnv() bool {
 		return false
 	}
 
-	row := pEnvDb.QueryRow(0, "select server_id,listen_addr,cluster_addr,master_addr,data_dsn,data_db_conn_num,client_key,auth_key,check_time,debug from c_login_server where server_id=?",
+	row := pEnvDb.QueryRow(0, "select server_id,listen_addr,cluster_addr,master_addr,data_dsn,data_db_conn_num,client_key,auth_key,check_time,debug from c_recharge_server where server_id=?",
 		localConf.ServerID)
 	err = row.Scan(&s.envConf.ServerID, &s.envConf.ListenAddr, &s.envConf.ClusterAddr, &s.envConf.MasterAddr, &s.envConf.DataDsn, &s.envConf.DataDbConnNum, &s.envConf.ClientKey,
 		&s.envConf.AuthKey, &s.envConf.CheckTime, &s.envConf.Debug)

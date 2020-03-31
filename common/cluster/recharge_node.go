@@ -26,7 +26,6 @@ func NewRechargeNode(pCluster *Cluster, serverType int32, serverID []int32, ip s
 			ServerId:   pCluster.arrServerID,
 			Ip:         pCluster.ip,
 		},
-		Token: authKey,
 	}
 
 	go func() {

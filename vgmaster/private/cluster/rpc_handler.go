@@ -2,12 +2,12 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"vgproj/proto/globalrpc"
 	"vgproj/proto/masterrpc"
 	"vgproj/vgmaster/public"
 
 	// logger "github.com/panlibin/vglog"
+	logger "github.com/panlibin/vglog"
 	"google.golang.org/grpc"
 )
 
@@ -21,11 +21,10 @@ func (s *Server) Register(rpcServer *grpc.Server) {
 }
 
 func (s *Server) Auth(ctx context.Context, req *globalrpc.NotifyServerAuth) (*globalrpc.Nop, error) {
-	if req.Token != public.Server.GetAuthKey() {
-		return &globalrpc.Nop{}, errors.New("err token")
-	}
 	public.Server.GetNodeManager().AddNode(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
 	public.Server.GetCluster().AddNode(req.Info.ServerType, req.Info.ServerId, req.Info.Ip)
+
+	logger.Infof("new node type: %d, id: %v", req.Info.ServerType, req.Info.ServerId)
 
 	return &globalrpc.Nop{}, nil
 }
