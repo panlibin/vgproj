@@ -36,6 +36,8 @@ github.com/panlibin/vgnet v0.0.0-20200320062008-b6a7569a5540 h1:v5UnuuJRitm1l7rF
 github.com/panlibin/vgnet v0.0.0-20200320062008-b6a7569a5540/go.mod h1:BBHRnbZ22qleGcxy6F+5Bi2Y9GXRAzPuZCoiS75aPZc=
 github.com/panlibin/virgo v0.0.0-20200325021836-17946704d9f2 h1:V1GiiFaVsK0IqpM1G9dw2S1E3eIt4q4fvW8if+S3BXM=
 github.com/panlibin/virgo v0.0.0-20200325021836-17946704d9f2/go.mod h1:zjrt7x4zpJFfEVcIKV9HrMKllLxR5tUYhyLl/kGpEyk=
+github.com/panlibin/virgo v0.0.0-20200331055222-5f1869b37757 h1:TYS6iyRIGTeu9HC2jYG8gtoPl5JYrCcM9f55/QqN3MU=
+github.com/panlibin/virgo v0.0.0-20200331055222-5f1869b37757/go.mod h1:zjrt7x4zpJFfEVcIKV9HrMKllLxR5tUYhyLl/kGpEyk=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
