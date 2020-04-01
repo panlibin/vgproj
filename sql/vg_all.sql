@@ -84,7 +84,42 @@ insert into c_master_server values(1,':8100','127.0.0.1:8101','root:root@tcp(127
 
 insert into c_game_server values(1,':9010','127.0.0.1:9011','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_game_data_1?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'root:root@tcp(127.0.0.1:3306)/vg_game_oa_1?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'root:root@tcp(127.0.0.1:3306)/vg_game_config?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',1);
 
-insert into c_recharge_server values(1,':8200','127.0.0.1:8201','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_login_data?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'vgcli','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',0,1);
+insert into c_recharge_server values(1,':8200','127.0.0.1:8201','127.0.0.1:8101','root:root@tcp(127.0.0.1:3306)/vg_recharge_data?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true',10,'vgcli','MWIzODNlYTIxYmU5MDAwNjMwNjIxYjRk',0,1);
+
+
+use vg_recharge_data;
+
+DROP TABLE IF EXISTS `recharge_order`;
+CREATE TABLE  `recharge_order`(
+    `local_order_id` bigint(20) unsigned NOT NULL,
+    `pf_order_id` varchar(128) NOT NULL,
+    `receive_date` datetime NOT NULL,
+    `source` varchar(32) NOT NULL,
+    `currency` varchar(32) NOT NULL,
+    `amount` bigint(20) NOT NULL,
+    `pf_product_id` varchar(32) NOT NULL,
+    `local_product_id` int(11) NOT NULL,
+    `account_id` bigint(20) NOT NULL,
+    `server_id` int(11) NOT NULL,
+    `player_id` bigint(20) NOT NULL,
+    `status` int(11) NOT NULL,
+    `sandbox` int(11) NOT NULL,
+    PRIMARY KEY (`local_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+DROP TABLE IF EXISTS `sdk_param`;
+CREATE TABLE  `sdk_param`(
+    `id` int(11) NOT NULL,
+    `name` varchar(32) NOT NULL,
+    `app_id` varchar(64) NOT NULL,
+    `key_1` varchar(255) NOT NULL,
+    `key_2` varchar(255) NOT NULL,
+    `key_3` varchar(255) NOT NULL,
+    `key_4` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 use vg_master_data;
 

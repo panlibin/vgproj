@@ -6,6 +6,7 @@ import (
 	"vgproj/common/cluster"
 	clusthdl "vgproj/vgrecharge/private/cluster"
 	"vgproj/vgrecharge/private/http"
+	"vgproj/vgrecharge/private/recharge"
 	"vgproj/vgrecharge/public"
 
 	logger "github.com/panlibin/vglog"
@@ -40,8 +41,9 @@ type Server struct {
 
 	pDataDb *database.Mysql
 
-	pHTTPServer *nethelper.HTTPServer
-	pCluster    *cluster.Cluster
+	pHTTPServer      *nethelper.HTTPServer
+	pCluster         *cluster.Cluster
+	pRechargeManager *recharge.RechargeManager
 }
 
 // NewServer 创建服务器
@@ -114,6 +116,11 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 	var err error
 
 	for {
+		s.pRechargeManager = recharge.NewRechargeManager()
+		if err = s.pRechargeManager.Init(); err != nil {
+			break
+		}
+
 		s.pCluster = cluster.NewCluster(s, cluster.NodeRecharge, []int32{s.envConf.ServerID}, s.envConf.ClusterAddr, s.envConf.AuthKey)
 		s.pCluster.SetHandler(&clusthdl.Server{})
 		if err = s.pCluster.Start(); err != nil {

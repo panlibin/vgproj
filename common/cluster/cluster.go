@@ -76,7 +76,9 @@ func (c *Cluster) Start() error {
 // Stop 关闭
 func (c *Cluster) Stop() {
 	logger.Infof("stop cluster")
-	c.rpcServer.Stop()
+	if c.rpcServer != nil {
+		c.rpcServer.Stop()
+	}
 	c.ln.Close()
 	logger.Infof("stop cluster finish")
 }

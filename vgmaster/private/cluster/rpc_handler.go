@@ -6,7 +6,6 @@ import (
 	"vgproj/proto/masterrpc"
 	"vgproj/vgmaster/public"
 
-	// logger "github.com/panlibin/vglog"
 	logger "github.com/panlibin/vglog"
 	"google.golang.org/grpc"
 )
