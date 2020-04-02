@@ -13,3 +13,4 @@ __debug_bin
 /vgrecharge/log
 /vgrecharge/vgrecharge
 /vgrecharge/vgrecharge.exe
+*_test.go
