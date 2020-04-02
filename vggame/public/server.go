@@ -24,6 +24,7 @@ type IServer interface {
 	GetConfigDb() *database.Mysql
 	GetOpenServerTime() time.Time
 	GetOpenServerTs() int64
+	GetLastDailyRefreshTs() int64
 	GetOpenServerDay(ts int64) int32
 	GetGameManager() igame.IGameManager
 	GetCluster() *cluster.Cluster

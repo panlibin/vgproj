@@ -54,8 +54,9 @@ type Server struct {
 	pOaDb     *database.Mysql
 	pConfDb   *database.Mysql
 
-	openServerTime time.Time
-	openServerTs   int64
+	openServerTime     time.Time
+	openServerTs       int64
+	lastDailyRefreshTs int64
 
 	pOaWriter      *oa.Writer
 	pConfigManager *config.ConfigManager
@@ -160,11 +161,12 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 	var err error
 
 	for {
-		row := s.pDataDb.QueryRow(0, "select open_server_time from global_system")
-		if err = row.Scan(&s.openServerTime); err != nil {
+		row := s.pDataDb.QueryRow(0, "select open_server_time,last_daily_refresh_ts from global_system")
+		if err = row.Scan(&s.openServerTime, &s.lastDailyRefreshTs); err != nil {
 			if err == sql.ErrNoRows {
 				s.openServerTime = time.Now()
-				s.pDataDb.Exec(0, "insert into global_system values(?)", s.openServerTime)
+				s.lastDailyRefreshTs = vgtime.LastDailyRefreshTs()
+				s.pDataDb.Exec(0, "insert into global_system values(?,?)", s.openServerTime, s.lastDailyRefreshTs)
 			} else {
 				break
 			}
@@ -208,6 +210,8 @@ func (s *Server) OnInit(p *virgo.Procedure) {
 	}
 
 	logger.Info("server init finish")
+
+	s.pGameManager.Start()
 }
 
 func (s *Server) OnRelease() {
@@ -273,6 +277,10 @@ func (s *Server) GetOpenServerTime() time.Time {
 
 func (s *Server) GetOpenServerTs() int64 {
 	return s.openServerTs
+}
+
+func (s *Server) GetLastDailyRefreshTs() int64 {
+	return s.lastDailyRefreshTs
 }
 
 func (s *Server) GetOpenServerDay(ts int64) int32 {

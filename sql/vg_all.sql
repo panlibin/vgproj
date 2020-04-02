@@ -204,7 +204,8 @@ use vg_game_data_1;
 
 DROP TABLE IF EXISTS `global_system`;
 CREATE TABLE  `global_system`(
-    `open_server_time` datetime NOT NULL
+    `open_server_time` datetime NOT NULL,
+    `last_daily_refresh_ts` bigint(20) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

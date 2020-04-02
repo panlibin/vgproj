@@ -55,9 +55,17 @@ func (gm *GameManager) Init() error {
 		}
 	}
 
-	gm.createDailyTimer(nil)
-
 	return nil
+}
+
+func (gm *GameManager) Start() {
+	serverDailyRefreshTs := public.Server.GetLastDailyRefreshTs()
+	lastDailyRefreshTs := vgtime.GetDayZeroTs(vgtime.Now())
+	nextDailyRefreshTs := lastDailyRefreshTs
+	if serverDailyRefreshTs >= lastDailyRefreshTs {
+		nextDailyRefreshTs += 3600 * 24 * 1000
+	}
+	gm.createDailyTimer(nextDailyRefreshTs)
 }
 
 func (gm *GameManager) Release() {
@@ -88,11 +96,17 @@ func (gm *GameManager) GetCustomLanguageManager() icuslan.ICustomLanguageManager
 	return gm.arrModule[Module_CustomLanguage].(icuslan.ICustomLanguageManager)
 }
 
-func (gm *GameManager) createDailyTimer(args []interface{}) {
-	nextRefreshTs := vgtime.NextDailyRefreshTs()
+func (gm *GameManager) createDailyTimer(nextTs int64) {
 	curTs := vgtime.Now()
-	gm.dailyTimer = public.Server.AfterFunc(time.Duration(nextRefreshTs-curTs)*time.Millisecond, gm.createDailyTimer, nextRefreshTs)
-	if args != nil {
-		gm.pEventManager.Dispatch(&igame.EventDailyRefresh{RefreshTs: args[0].(int64)})
-	}
+	gm.dailyTimer = public.Server.AfterFunc(time.Duration(nextTs-curTs)*time.Millisecond, gm.dailyRefresh, nextTs)
+}
+
+func (gm *GameManager) dailyRefresh(args []interface{}) {
+	refreshTs := args[0].(int64)
+	logger.Infof("daily refresh ts: %d", refreshTs)
+	gm.createDailyTimer(refreshTs + 3600*24*1000)
+
+	public.Server.GetGlobalDb().AsyncExec(nil, nil, 0, "update global_system set last_daily_refresh_ts=?", refreshTs)
+
+	gm.pEventManager.Dispatch(&igame.EventDailyRefresh{RefreshTs: refreshTs})
 }
