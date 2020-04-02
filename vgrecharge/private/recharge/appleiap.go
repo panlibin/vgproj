@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -20,6 +21,7 @@ var (
 	ErrAppleBundleIdMismatch      = errors.New("[Apple] bundle id mismatch!")
 	ErrAppleTransactionIdMismatch = errors.New("[Apple] transaction id mismatch!")
 	ErrAppleProductIdMismatch     = errors.New("[Apple] product id mismatch!")
+	ErrAppleDuplicateOrder        = errors.New("[Apple] duplicate order!")
 )
 
 type appleIAP struct {
@@ -76,39 +78,41 @@ type IapInApp struct {
 	IsTrialPeriod           string `json:"is_trial_period"`
 }
 
-func (iap *appleIAP) verify(accountId int64, serverId int32, playerId int64, pfProductId string, jsonParams []byte) error {
+func (iap *appleIAP) verifyAndCreateOrder(currency string, amount int64, pfProductId string, localProductId int32, accountId int64, serverId int32, playerId int64, jsonParams []byte) (*order, error) {
 	params := map[string]string{}
-	err := json.Unmarshal(jsonParams, &params)
-	if err != nil {
-		return err
+	if err := json.Unmarshal(jsonParams, &params); err != nil {
+		return nil, err
 	}
 
 	receipt, exist := params["receipt"]
 	if !exist {
-		return ErrAppleMissingParam
+		return nil, ErrAppleMissingParam
 	}
 	transactionId, exist := params["transaction_id"]
 	if !exist {
-		return ErrAppleMissingParam
+		return nil, ErrAppleMissingParam
 	}
 
 	verifyData := map[string]string{}
 	verifyData["receipt-data"] = receipt
 	verifyBody, err := json.Marshal(&verifyData)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	var sandbox int32 = 0
 	verifyResult, err := iap.requestVerify(appleIAPVerifyUrl, verifyBody)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 如果是沙盒账号的,则切换地址重新请求
 	if verifyResult.Status == 21007 {
 		verifyResult, err = iap.requestVerify(appleIAPVerifyUrlSandbox, verifyBody)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		sandbox = 1
 	}
 
 	// 状态码 描述
@@ -121,41 +125,69 @@ func (iap *appleIAP) verify(accountId int64, serverId int32, playerId int64, pfP
 	// 21007 收据信息是测试用（sandbox），但却被发送到产品环境中验证
 	// 21008 收据信息是产品环境中使用，但却被发送到测试环境中验证
 	if verifyResult.Status != 0 {
-		return fmt.Errorf("[Apple] verify fail! receipt=%s, transaction_id=%s, status=%d", receipt, transactionId, verifyResult.Status)
+		return nil, fmt.Errorf("[Apple] verify fail! receipt=%s, transaction_id=%s, status=%d", receipt, transactionId, verifyResult.Status)
 	}
 	if verifyResult.Receipt == nil {
-		return ErrAppleReceiptIsNil
+		return nil, ErrAppleReceiptIsNil
 	}
 
 	if len(verifyResult.Receipt.InApp) == 0 {
 		if verifyResult.Receipt.Bid != iap.appId {
-			return ErrAppleBundleIdMismatch
+			return nil, ErrAppleBundleIdMismatch
 		}
 		if verifyResult.Receipt.TransactionId != transactionId {
-			return ErrAppleTransactionIdMismatch
+			return nil, ErrAppleTransactionIdMismatch
 		}
 		if verifyResult.Receipt.ProductId != pfProductId {
-			return ErrAppleProductIdMismatch
+			return nil, ErrAppleProductIdMismatch
 		}
 	} else {
 		if verifyResult.Receipt.BundleId != iap.appId {
-			return ErrAppleBundleIdMismatch
+			return nil, ErrAppleBundleIdMismatch
 		}
 		found := false
 		for _, pInAppData := range verifyResult.Receipt.InApp {
 			if pInAppData.TransactionId == transactionId {
 				if pInAppData.ProductId != pfProductId {
-					return ErrAppleProductIdMismatch
+					return nil, ErrAppleProductIdMismatch
 				}
 				found = true
 				break
 			}
 		}
 		if !found {
-			return ErrAppleTransactionIdMismatch
+			return nil, ErrAppleTransactionIdMismatch
 		}
 	}
-	return nil
+
+	o := &order{
+		localOrderId:   genOrderId(),
+		pfId:           platformApple,
+		pfOrderId:      transactionId,
+		receiveDate:    time.Now(),
+		source:         "Apple",
+		currency:       currency,
+		amount:         amount,
+		pfProductId:    pfProductId,
+		localProductId: localProductId,
+		accountId:      accountId,
+		serverId:       serverId,
+		playerId:       playerId,
+		status:         orderStatusWaitDeliver,
+		sandbox:        sandbox,
+	}
+
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+	if !iap.insertOrder(o) {
+		return nil, ErrAppleDuplicateOrder
+	}
+	if err = o.insert(); err != nil {
+		iap.removeOrder(o)
+		return nil, err
+	}
+
+	return o, nil
 }
 
 func (iap *appleIAP) requestVerify(url string, reqBody []byte) (*IapResult, error) {

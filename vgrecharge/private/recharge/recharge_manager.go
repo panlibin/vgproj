@@ -2,8 +2,6 @@ package recharge
 
 import (
 	"errors"
-	"sync/atomic"
-	"time"
 	"vgproj/vgrecharge/public"
 
 	logger "github.com/panlibin/vglog"
@@ -20,13 +18,14 @@ var (
 )
 
 type platformImplement interface {
-	verify(accountId int64, serverId int32, playerId int64, pfProductId string, jsonParams []byte) error
+	createOrder(currency string, amount int64, pfProductId string, localProductId int32, accountId int64, serverId int32, playerId int64) (*order, error)
+	verify(localOrderId uint64) (*order, error)
+	verifyAndCreateOrder(currency string, amount int64, pfProductId string, localProductId int32, accountId int64, serverId int32, playerId int64, jsonParams []byte) (*order, error)
 }
 
 type RechargeManager struct {
 	mapSdkParam          map[int32]*sdkParam
 	mapPlatformImplement map[int32]platformImplement
-	serialId             uint32
 }
 
 func NewRechargeManager() *RechargeManager {
@@ -70,9 +69,4 @@ func (rm *RechargeManager) Init() error {
 	}
 
 	return nil
-}
-
-func (rm *RechargeManager) genOrderId() uint64 {
-	s := atomic.AddUint32(&rm.serialId, 1)
-	return (uint64(time.Now().Unix()) << TimeOffset) + uint64(s)
 }

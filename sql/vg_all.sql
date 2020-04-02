@@ -92,7 +92,8 @@ use vg_recharge_data;
 DROP TABLE IF EXISTS `recharge_order`;
 CREATE TABLE  `recharge_order`(
     `local_order_id` bigint(20) unsigned NOT NULL,
-    `pf_order_id` varchar(128) NOT NULL,
+    `pf_id` int(11) NOT NULL,
+    `pf_order_id` char(64) NOT NULL,
     `receive_date` datetime NOT NULL,
     `source` varchar(32) NOT NULL,
     `currency` varchar(32) NOT NULL,
@@ -104,7 +105,8 @@ CREATE TABLE  `recharge_order`(
     `player_id` bigint(20) NOT NULL,
     `status` int(11) NOT NULL,
     `sandbox` int(11) NOT NULL,
-    PRIMARY KEY (`local_order_id`)
+    PRIMARY KEY (`local_order_id`),
+    INDEX `pf_order`(`pf_id`,`pf_order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

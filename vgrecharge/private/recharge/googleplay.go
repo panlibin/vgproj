@@ -8,12 +8,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 var (
 	ErrGooglePlayMissingParam        = errors.New("[GooglePlay] missing parameter!")
 	ErrGooglePlayProductIdMismatch   = errors.New("[GooglePlay] product id mismatch!")
 	ErrGooglePlayPackageNameMismatch = errors.New("[GooglePlay] package name mismatch!")
+	ErrGooglePlayDuplicateOrder      = errors.New("[GooglePlay] duplicate order!")
 )
 
 type googlePlay struct {
@@ -46,53 +48,79 @@ type GooglePlayIAPData struct {
 	DeveloperPayload string `json:"developerPayload"`
 }
 
-func (gp *googlePlay) verify(accountId int64, serverId int32, playerId int64, pfProductId string, jsonParams []byte) error {
+func (gp *googlePlay) verifyAndCreateOrder(currency string, amount int64, pfProductId string, localProductId int32, accountId int64, serverId int32, playerId int64, jsonParams []byte) (*order, error) {
 	params := map[string]string{}
-	err := json.Unmarshal(jsonParams, &params)
-	if err != nil {
-		return err
+	if err := json.Unmarshal(jsonParams, &params); err != nil {
+		return nil, err
 	}
 
 	iapData, exist := params["iapdata"]
 	if !exist {
-		return ErrGooglePlayMissingParam
+		return nil, ErrGooglePlayMissingParam
 	}
 	sign, exist := params["sign"]
 	if !exist {
-		return ErrGooglePlayMissingParam
+		return nil, ErrGooglePlayMissingParam
 	}
-	// ext, exist := params["ext"]
-	// if !exist {
-	// 	return ErrGooglePlayMissingParam
-	// }
+	ext, exist := params["ext"]
+	if !exist {
+		return nil, ErrGooglePlayMissingParam
+	}
 	// purchaseToken, exist := params["purchase_token"]
 	// if !exist {
-	// 	return ErrGooglePlayMissingParam
+	// 	return nil, ErrGooglePlayMissingParam
 	// }
 
 	byteIapData := []byte(iapData)
 	hashedData := sha1.Sum(byteIapData)
 	decodedSign, err := base64.StdEncoding.DecodeString(sign)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = rsa.VerifyPKCS1v15(gp.publicKey, crypto.SHA1, hashedData[:], decodedSign)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pIAPData := &GooglePlayIAPData{}
 	err = json.Unmarshal(byteIapData, pIAPData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if pIAPData.ProductId != pfProductId {
-		return ErrGooglePlayProductIdMismatch
+		return nil, ErrGooglePlayProductIdMismatch
 	}
 	if pIAPData.PackageName != gp.packageName {
-		return ErrGooglePlayPackageNameMismatch
+		return nil, ErrGooglePlayPackageNameMismatch
 	}
 
-	return nil
+	o := &order{
+		localOrderId:   genOrderId(),
+		pfId:           platformGooglePlay,
+		pfOrderId:      ext,
+		receiveDate:    time.Now(),
+		source:         "GooglePlay",
+		currency:       currency,
+		amount:         amount,
+		pfProductId:    pfProductId,
+		localProductId: localProductId,
+		accountId:      accountId,
+		serverId:       serverId,
+		playerId:       playerId,
+		status:         orderStatusWaitDeliver,
+		sandbox:        0,
+	}
+
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+	if !gp.insertOrder(o) {
+		return nil, ErrGooglePlayDuplicateOrder
+	}
+	if err = o.insert(); err != nil {
+		gp.removeOrder(o)
+		return nil, err
+	}
+
+	return o, nil
 }
