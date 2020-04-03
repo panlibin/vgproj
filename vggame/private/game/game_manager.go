@@ -6,11 +6,13 @@ import (
 	cuslan "vgproj/vggame/private/game/custom_language"
 	"vgproj/vggame/private/game/mail"
 	"vgproj/vggame/private/game/player"
+	"vgproj/vggame/private/game/rank"
 	"vgproj/vggame/public"
 	igame "vgproj/vggame/public/game"
 	icuslan "vgproj/vggame/public/game/custom_language"
 	imail "vgproj/vggame/public/game/mail"
 	iplayer "vgproj/vggame/public/game/player"
+	irank "vgproj/vggame/public/game/rank"
 
 	logger "github.com/panlibin/vglog"
 	"github.com/panlibin/virgo/util/vgevent"
@@ -28,6 +30,7 @@ func NewGameManager(msgDesc *util.MessageDescriptor) *GameManager {
 	pObj.arrModule[Module_Player] = player.NewPlayerManager(msgDesc)
 	pObj.arrModule[Module_CustomLanguage] = cuslan.NewCustomLanguageManager()
 	pObj.arrModule[Module_Mail] = mail.NewMailManager()
+	pObj.arrModule[Module_Rank] = rank.NewRankManager()
 	pObj.pEventManager = vgevent.NewEventManager()
 
 	return pObj
@@ -94,6 +97,10 @@ func (gm *GameManager) GetMailManager() imail.IMailManager {
 
 func (gm *GameManager) GetCustomLanguageManager() icuslan.ICustomLanguageManager {
 	return gm.arrModule[Module_CustomLanguage].(icuslan.ICustomLanguageManager)
+}
+
+func (gm *GameManager) GetRankManager() irank.IRankManager {
+	return gm.arrModule[Module_Rank].(irank.IRankManager)
 }
 
 func (gm *GameManager) createDailyTimer(nextTs int64) {

@@ -11,14 +11,18 @@ type IRankObject interface {
 }
 
 type ObjectData struct {
-	Id   int64
-	Name string
+	Id       int64
+	Name     string
+	ServerId int32
+	Lev      int32
+	TitleId  int32
 }
 
 type NormalRankObject struct {
 	ObjData    ObjectData
 	Val        int64
 	ChangeTime int64
+	Extra      []int64
 }
 
 func (ro *NormalRankObject) GetId() int64 {
@@ -38,7 +42,7 @@ func (ro *NormalRankObject) GetChangeTime() int64 {
 }
 
 func (ro *NormalRankObject) GetExtra() []int64 {
-	return nil
+	return ro.Extra
 }
 
 func (ro *NormalRankObject) Less(t IRankObject) bool {

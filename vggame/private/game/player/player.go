@@ -63,8 +63,9 @@ func newPlayer(playerId int64) *Player {
 
 func (p *Player) insert(accountId int64, serverId int32, name string, head int32, ctx interface{}, cb func(interface{}, iplayer.IPlayer)) {
 	p.loadCb = &loadContext{ctx: ctx, cb: cb}
-	public.Server.GetDataDb().AsyncExec(nil, p.insertCallback, uint32(p.playerId), "insert into player_data(player_id,account_id,server_id,name,head,sex,lev,`exp`,create_ts)"+
-		" values(?,?,?,?,?,0,1,0,?)", p.playerId, accountId, serverId, name, head, vgtime.Now())
+	curTs := vgtime.Now()
+	public.Server.GetDataDb().AsyncExec(nil, p.insertCallback, uint32(p.playerId), "insert into player_data(player_id,account_id,server_id,name,head,sex,lev,`exp`,create_ts,"+
+		"last_daily_refresh_ts) values(?,?,?,?,?,0,1,0,?,?)", p.playerId, accountId, serverId, name, head, curTs, curTs)
 }
 
 func (p *Player) insertCallback(args []interface{}) {

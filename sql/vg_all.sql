@@ -337,6 +337,22 @@ CREATE TABLE  `player_settings`(
     PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+
+DROP TABLE IF EXISTS `global_rank`;
+CREATE TABLE  `global_rank`(
+    `rank_type` int(11) NOT NULL,
+    `obj_id` bigint(20) NOT NULL,
+    `val` bigint(20) NOT NULL,
+    `change_time` bigint(20) NOT NULL,
+    `extra` varchar(255) NOT NULL,
+    `name` varchar(64) NOT NULL,
+    `server_id` int(11) NOT NULL,
+    `lev` int(11) NOT NULL,
+    `title_id` int(11) NOT NULL,
+    PRIMARY KEY (`rank_type`,`obj_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 use vg_game_oa_1;
 
 DROP TABLE IF EXISTS `log_create_character`;
