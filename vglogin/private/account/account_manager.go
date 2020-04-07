@@ -174,9 +174,11 @@ func (am *AccountManager) createAccount(loginType int32, name string, pwd string
 	pAccountName.createTime = time.Now()
 
 	pAccount = NewAccount(accountId)
-	pAccount.salt = fmt.Sprintf("%x", rand.Uint64())
-	encodedPass := md5.Sum([]byte(pwd + pAccount.salt))
-	pAccount.password = hex.EncodeToString(encodedPass[:])
+	if len(pwd) > 0 {
+		pAccount.salt = fmt.Sprintf("%x", rand.Uint64())
+		encodedPass := md5.Sum([]byte(pwd + pAccount.salt))
+		pAccount.password = hex.EncodeToString(encodedPass[:])
+	}
 	pAccount.createTime = pAccountName.createTime
 	pAccount.addName(pAccountName)
 	pAccount.Lock()
