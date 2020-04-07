@@ -1,7 +1,11 @@
 package account
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
+	"fmt"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -66,7 +70,7 @@ func (am *AccountManager) Register(name string, pwd string) int32 {
 	if !am.isValidAccountLength(name) {
 		return ec.InvalidAccountLength
 	}
-	if len(pwd) > 64 {
+	if len(pwd) > 64 || len(pwd) < 6 {
 		return ec.InvalidAccountPassword
 	}
 	if !vgstr.IsAlphanumericOrUnderscore(name) {
@@ -100,7 +104,8 @@ func (am *AccountManager) Login(loginType int32, name string, password string) (
 		}
 		defer pAccount.Unlock()
 
-		if pAccount.password != password {
+		encodedPass := md5.Sum([]byte(password + pAccount.salt))
+		if pAccount.password != hex.EncodeToString(encodedPass[:]) {
 			return pAccount, ec.WrongPassword
 		}
 	} else {
@@ -169,7 +174,9 @@ func (am *AccountManager) createAccount(loginType int32, name string, pwd string
 	pAccountName.createTime = time.Now()
 
 	pAccount = NewAccount(accountId)
-	pAccount.password = pwd
+	pAccount.salt = fmt.Sprintf("%x", rand.Uint64())
+	encodedPass := md5.Sum([]byte(pwd + pAccount.salt))
+	pAccount.password = hex.EncodeToString(encodedPass[:])
 	pAccount.createTime = pAccountName.createTime
 	pAccount.addName(pAccountName)
 	pAccount.Lock()

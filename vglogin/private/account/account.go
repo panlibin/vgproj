@@ -15,6 +15,7 @@ import (
 type Account struct {
 	id           int64
 	password     string
+	salt         string
 	createTime   time.Time
 	isBan        int32
 	banTs        int64
@@ -114,7 +115,7 @@ func (a *Account) GetCharacters() map[int32]iaccount.ICharacter {
 }
 
 func (a *Account) loadData() error {
-	rows, err := public.Server.GetDataDb().Query(uint32(a.id), fmt.Sprintf("select `password`,create_time,is_ban,ban_ts,ban_type,ban_duration from account_info where account_id=%d;"+
+	rows, err := public.Server.GetDataDb().Query(uint32(a.id), fmt.Sprintf("select `password`,salt,create_time,is_ban,ban_ts,ban_type,ban_duration from account_info where account_id=%d;"+
 		"select login_type,account_name,create_time from account_name where account_id=%d;select player_id,server_id,name,combat from character_info where account_id=%d", a.id, a.id, a.id))
 
 	if err != nil {
@@ -131,7 +132,7 @@ func (a *Account) loadData() error {
 			break
 		}
 
-		if err = rows.Scan(&a.password, &a.createTime, &a.isBan, &a.banTs, &a.banType, &a.banDuration); err != nil {
+		if err = rows.Scan(&a.password, &a.salt, &a.createTime, &a.isBan, &a.banTs, &a.banType, &a.banDuration); err != nil {
 			break
 		}
 
@@ -191,8 +192,8 @@ func (a *Account) loadData() error {
 }
 
 func (a *Account) insert() error {
-	_, err := public.Server.GetDataDb().Exec(uint32(a.id), "insert into account_info(account_id,`password`,create_time,online_server) values(?,?,?,?)",
-		a.id, a.password, a.createTime, 0)
+	_, err := public.Server.GetDataDb().Exec(uint32(a.id), "insert into account_info(account_id,`password`,salt,create_time,online_server) values(?,?,?,?,?)",
+		a.id, a.password, a.salt, a.createTime, 0)
 	if err != nil {
 		logger.Error(err)
 		a.lastErr = err
@@ -201,8 +202,8 @@ func (a *Account) insert() error {
 }
 
 func (a *Account) updatePassword() {
-	public.Server.GetDataDb().Exec(uint32(a.id), "update account_info set `password`=? where account_id=?",
-		a.password, a.id)
+	public.Server.GetDataDb().Exec(uint32(a.id), "update account_info set `password`=?,salt=? where account_id=?",
+		a.password, a.salt, a.id)
 }
 
 func (a *Account) updateBanInfo() {

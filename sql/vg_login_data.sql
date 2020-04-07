@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS `account_info`;
 CREATE TABLE  `account_info`(
     `account_id` bigint(20) NOT NULL,
     `password` varchar(64) NOT NULL,
+    `salt` varchar(16) NOT NULL,
     `create_time` datetime NOT NULL,
     `is_ban` int(11) NOT NULL DEFAULT 0,
     `ban_ts` bigint(20) NOT NULL DEFAULT 0,
